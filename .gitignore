@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Production / Build
+dist/
+build/
+target/
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.DS_Store
+*.log
+
+# Temp files
+*.tmp
+*.bak

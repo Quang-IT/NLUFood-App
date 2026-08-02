@@ -1,0 +1,9 @@
+{
+  "appId": "com.nlufood.app",
+  "appName": "NLUFood",
+  "webDir": "dist",
+  "server": {
+    "cleartext": true,
+    "androidScheme": "http"
+  }
+}

@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Database Service
+  db:
+    image: mysql:8.0
+    container_name: nlufood-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: nlufood
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # Spring Boot Backend Service
+  backend:
+    build:
+      context: ./nlufood-backend
+      dockerfile: Dockerfile
+    container_name: nlufood-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/nlufood?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQLDialect
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      - db
+
+  # Web Database Manager (Giao diện trực quan giống H2 Console)
+  adminer:
+    image: adminer:latest
+    container_name: nlufood-adminer
+    ports:
+      - "8081:8080"
+    depends_on:
+      - db
+
+volumes:
+  mysql_data:

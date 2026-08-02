@@ -1,0 +1,56 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@theme {
+  --color-primary: #ab3500;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #ffdbd0;
+  --color-on-primary-container: #390c00;
+  
+  --color-surface: #fcf9f8;
+  --color-on-surface: #1c1b1b;
+  --color-surface-variant: #e5e2e1;
+  --color-on-surface-variant: #594139;
+  
+  --color-outline: #8d7168;
+  --color-outline-variant: #e1bfb5;
+  
+  --color-background: #fcf9f8;
+  --color-error: #ba1a1a;
+}
+
+@layer base {
+  body, html, #root {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    display: block;
+  }
+  
+  body {
+    background-color: var(--color-background);
+    color: var(--color-on-surface);
+    font-family: 'Inter', sans-serif;
+  }
+  
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  
+  input {
+    @apply transition-all duration-200;
+  }
+}
+
+@layer utilities {
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
