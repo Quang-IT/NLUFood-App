@@ -115,6 +115,17 @@ export default function OrdersScreen({ navigation, user }) {
                     ))}
                   </View>
 
+                  {/* Shipper Info */}
+                  {order.status === 'DELIVERING' && order.driverName && (
+                    <View style={styles.driverBox}>
+                      <Text style={{ fontSize: 24, marginRight: 10 }}>🛵</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.driverName}>{order.driverName}</Text>
+                        <Text style={styles.driverPhone}>{order.driverPhone} • {order.driverLicensePlate}</Text>
+                      </View>
+                    </View>
+                  )}
+
                   <View style={styles.cardBottom}>
                     <View>
                       <Text style={styles.totalLabel}>Tổng thanh toán:</Text>
@@ -165,6 +176,9 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 12, fontWeight: 'bold' },
   itemsBox: { backgroundColor: '#F9F9F9', padding: 10, borderRadius: 10, marginBottom: 12 },
   itemText: { fontSize: 13, color: '#444', marginBottom: 2 },
+  driverBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3E5F5', padding: 10, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E1BEE7' },
+  driverName: { fontSize: 13, fontWeight: 'bold', color: '#4A148C' },
+  driverPhone: { fontSize: 11, color: '#6A1B9A', marginTop: 1 },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderColor: '#EEE', paddingTop: 12 },
   totalLabel: { fontSize: 11, color: '#777' },
   totalPrice: { fontSize: 16, fontWeight: 'bold', color: '#FF6B00' },

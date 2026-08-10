@@ -8,7 +8,8 @@ function ManageRestaurant({ user, onBack, onOpenChat }) {
   const [menuItems, setMenuItems] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('menu'); // 'menu', 'orders'
+  const [activeTab, setActiveTab] = useState('menu'); // 'menu', 'orders', 'analytics'
+  const [analyticsData, setAnalyticsData] = useState(null);
   
   const [editingItem, setEditingItem] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -298,17 +299,89 @@ function ManageRestaurant({ user, onBack, onOpenChat }) {
       <div className="flex bg-surface-container-low p-1 rounded-2xl mb-lg">
         <button 
           onClick={() => setActiveTab('menu')}
-          className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'menu' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant'}`}
+          className={`flex-1 py-3 rounded-xl font-bold text-xs sm:text-sm transition-all ${activeTab === 'menu' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant'}`}
         >
           Thực đơn
         </button>
         <button 
           onClick={() => setActiveTab('orders')}
-          className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'orders' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant'}`}
+          className={`flex-1 py-3 rounded-xl font-bold text-xs sm:text-sm transition-all ${activeTab === 'orders' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant'}`}
         >
           Đơn hàng {orders.filter(o => o.status === 'PENDING').length > 0 && <span className="ml-1 bg-error text-white px-1.5 py-0.5 rounded-full text-[10px]">{orders.filter(o => o.status === 'PENDING').length}</span>}
         </button>
+        <button 
+          onClick={() => {
+            setActiveTab('analytics');
+            if (selectedRestaurant) {
+              axios.get(`${API_BASE_URL}/analytics/restaurant/${selectedRestaurant.id}`)
+                .then(res => setAnalyticsData(res.data))
+                .catch(err => console.error("Lỗi khi tải thống kê:", err));
+            }
+          }}
+          className={`flex-1 py-3 rounded-xl font-bold text-xs sm:text-sm transition-all ${activeTab === 'analytics' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant'}`}
+        >
+          Doanh thu 📊
+        </button>
       </div>
+
+      {/* Analytics View */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {!analyticsData ? (
+            <div className="text-center py-10 text-xs text-gray-500 font-bold">Đang tải thống kê doanh thu...</div>
+          ) : (
+            <>
+              {/* Stat Cards */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-tr from-orange-500 to-amber-500 text-white rounded-3xl p-5 shadow-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-2xl">payments</span>
+                    <span className="text-xs font-bold uppercase tracking-wider opacity-90">Tổng doanh thu</span>
+                  </div>
+                  <h3 className="font-display text-2xl font-bold">{analyticsData.totalRevenue?.toLocaleString()}đ</h3>
+                  <p className="text-[10px] opacity-80 mt-1">Từ các đơn hàng hoàn thành</p>
+                </div>
+
+                <div className="bg-white border-2 border-indigo-100 rounded-3xl p-5 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center gap-2 mb-1 text-indigo-600">
+                    <span className="material-symbols-outlined text-2xl">verified</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">Đơn hoàn thành</span>
+                  </div>
+                  <h3 className="font-display text-3xl font-bold text-gray-900">{analyticsData.completedCount} <span className="text-xs font-semibold text-gray-500">/ {analyticsData.totalOrders} đơn</span></h3>
+                  <p className="text-[10px] text-gray-400 mt-1">Tỷ lệ giao công: {analyticsData.totalOrders > 0 ? Math.round((analyticsData.completedCount / analyticsData.totalOrders) * 100) : 0}%</p>
+                </div>
+              </div>
+
+              {/* Top Selling Dishes Table */}
+              <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
+                <h4 className="font-bold text-sm text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">local_fire_department</span>
+                  Top món ăn bán chạy nhất
+                </h4>
+                {analyticsData.topItems?.length === 0 ? (
+                  <p className="text-xs text-gray-400">Chưa có dữ liệu món bán chạy.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {analyticsData.topItems?.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${idx === 0 ? 'bg-amber-400 text-white' : idx === 1 ? 'bg-slate-300 text-slate-700' : 'bg-gray-200 text-gray-700'}`}>
+                            #{idx + 1}
+                          </span>
+                          <span className="font-bold text-sm text-gray-800">{item.name}</span>
+                        </div>
+                        <span className="text-xs font-bold bg-primary/10 text-primary px-3 py-1 rounded-full">
+                          Đã bán: {item.sold} món
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Menu View */}
       {activeTab === 'menu' && (

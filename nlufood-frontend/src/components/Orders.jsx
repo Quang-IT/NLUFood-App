@@ -154,6 +154,25 @@ function Orders({ user, onOpenChat }) {
                 </div>
               </div>
 
+              {/* Shipper Driver Info Card */}
+              {order.status === 'DELIVERING' && order.driverName && (
+                <div className="mb-4 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 border border-indigo-100 rounded-2xl flex items-center justify-between shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                      🛵
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs text-gray-900">{order.driverName}</h4>
+                      <p className="text-[11px] text-indigo-700 font-semibold">{order.driverPhone} • {order.driverLicensePlate}</p>
+                    </div>
+                  </div>
+                  <a href={`tel:${order.driverPhone}`} className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 shadow-sm active:scale-95 transition-transform">
+                    <span className="material-symbols-outlined text-sm">call</span>
+                    <span>Gọi xe</span>
+                  </a>
+                </div>
+              )}
+
               <div className="flex justify-between items-center pt-4 border-t border-surface-variant/50">
                 <div>
                   <p className="text-[10px] text-on-surface-variant uppercase font-bold">Tổng cộng</p>

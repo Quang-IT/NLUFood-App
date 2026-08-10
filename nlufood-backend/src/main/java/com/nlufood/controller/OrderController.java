@@ -68,6 +68,11 @@ public class OrderController {
             @RequestParam(required = false) String cancelReason) {
         return orderRepository.findById(id).map(order -> {
             order.setStatus(status);
+            if ("DELIVERING".equals(status) && order.getDriverName() == null) {
+                order.setDriverName("Nguyễn Văn Hùng (Shipper NLU)");
+                order.setDriverPhone("0988 123 456");
+                order.setDriverLicensePlate("59-X1 678.90");
+            }
             if ("CANCELLED".equals(status) && cancelReason != null) {
                 order.setCancelReason(cancelReason);
             }
@@ -83,7 +88,7 @@ public class OrderController {
                     msg = restaurantName + " đang bắt đầu chế biến món ăn ngon cho bạn.";
                 } else if ("DELIVERING".equals(status)) {
                     title = "Đơn hàng đang được giao! 🛵";
-                    msg = "Tài xế đang nhanh chóng giao đơn hàng từ " + restaurantName + " đến bạn.";
+                    msg = "Tài xế " + updatedOrder.getDriverName() + " (" + updatedOrder.getDriverPhone() + ") đang nhanh chóng giao đơn hàng đến bạn.";
                 } else if ("COMPLETED".equals(status)) {
                     title = "Đơn hàng hoàn thành! 🎉";
                     msg = "Đơn hàng từ " + restaurantName + " đã được giao thành công. Hãy đánh giá món ăn nhé!";

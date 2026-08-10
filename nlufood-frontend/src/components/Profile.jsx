@@ -3,7 +3,9 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config';
 
 function Profile({ user, onLogout, onUpdateUser, onManageRestaurant }) {
-  const [currentView, setCurrentView] = useState('main'); // 'main', 'edit', 'payment', 'help', 'notifications', 'membership'
+  const [currentView, setCurrentView] = useState('main'); // 'main', 'edit', 'payment', 'help', 'notifications', 'membership', 'vouchers'
+  const [savedVouchers, setSavedVouchers] = useState([]);
+  const [voucherCodeInput, setVoucherCodeInput] = useState('');
 
   // Edit profile states
   const [name, setName] = useState(user?.name || '');
@@ -416,6 +418,78 @@ function Profile({ user, onLogout, onUpdateUser, onManageRestaurant }) {
     );
   }
 
+  // SUB-VIEW: SAVED VOUCHERS WALLET
+  if (currentView === 'vouchers') {
+    return (
+      <div className="px-margin pt-sm pb-24 animate-in slide-in-from-right duration-300">
+        <div className="flex items-center gap-2 mb-md">
+          <button onClick={() => setCurrentView('main')} className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container active:scale-90 transition-transform">
+            <span className="material-symbols-outlined text-on-surface">arrow_back</span>
+          </button>
+          <h2 className="font-h2 text-h2 text-on-surface">Ví Voucher cá nhân</h2>
+        </div>
+
+        {/* Claim Voucher Box */}
+        <div className="bg-white border-2 border-primary/20 rounded-3xl p-4 mb-lg shadow-sm">
+          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 block">Lưu mã giảm giá mới vào Ví:</label>
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              value={voucherCodeInput}
+              onChange={e => setVoucherCodeInput(e.target.value.toUpperCase())}
+              placeholder="Nhập mã (NLUSTUDENT, FOOD50...)" 
+              className="flex-1 bg-surface-container-low border border-gray-200 rounded-2xl px-4 py-2.5 text-xs font-bold focus:outline-none focus:border-primary"
+            />
+            <button 
+              onClick={() => {
+                if (!voucherCodeInput.trim()) return;
+                axios.post(`${API_BASE_URL}/vouchers/save?userId=${user.id}&code=${voucherCodeInput.trim()}`)
+                  .then(res => {
+                    alert(res.data.message);
+                    setVoucherCodeInput('');
+                    axios.get(`${API_BASE_URL}/vouchers/user/${user.id}`).then(r => setSavedVouchers(r.data || []));
+                  })
+                  .catch(err => alert(err.response?.data?.message || "Không thể lưu voucher."));
+              }}
+              className="bg-primary text-white font-bold text-xs px-5 py-2.5 rounded-2xl active:scale-95 transition-transform"
+            >
+              Lưu ngay
+            </button>
+          </div>
+        </div>
+
+        {/* Vouchers List */}
+        <h3 className="font-bold text-sm text-gray-800 mb-3 ml-1">Mã giảm giá đã lưu ({savedVouchers.length})</h3>
+        {savedVouchers.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-3xl border border-gray-100 p-6">
+            <span className="material-symbols-outlined text-5xl text-gray-300 mb-2">confirmation_number</span>
+            <p className="text-xs text-gray-500 font-bold">Ví Voucher của bạn đang trống</p>
+            <p className="text-[11px] text-gray-400 mt-1">Hãy nhập mã gợi ý NLUSTUDENT hoặc FREESHIP ở trên để lưu vào ví nhé!</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {savedVouchers.map(sv => (
+              <div key={sv.id} className="bg-white border-2 border-primary/10 rounded-3xl p-4 shadow-sm flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-pink-50 text-pink-600 flex items-center justify-center font-bold text-xl">
+                    🎟️
+                  </div>
+                  <div>
+                    <span className="font-bold text-base text-gray-900">{sv.promoCode?.code}</span>
+                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{sv.promoCode?.description}</p>
+                    <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full mt-1 inline-block">
+                      Sẵn sàng sử dụng khi thanh toán
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // SUB-VIEW: HELP
   if (currentView === 'help') {
     return (
@@ -538,6 +612,27 @@ function Profile({ user, onLogout, onUpdateUser, onManageRestaurant }) {
         <section>
           <h4 className="text-[10px] font-bold text-on-surface-variant uppercase tracking-[2px] ml-1 mb-3">Dịch vụ & Ưu đãi</h4>
           <div className="bg-white border border-outline-variant/30 rounded-[28px] overflow-hidden shadow-sm divide-y divide-gray-100">
+            <button 
+              onClick={() => {
+                setCurrentView('vouchers');
+                axios.get(`${API_BASE_URL}/vouchers/user/${user.id}`)
+                  .then(res => setSavedVouchers(res.data || []))
+                  .catch(err => console.error(err));
+              }} 
+              className="w-full flex items-center justify-between p-4 hover:bg-surface-container-low active:bg-surface-container transition-colors"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center">
+                  <span className="material-symbols-outlined">confirmation_number</span>
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-sm text-on-surface">Ví Voucher cá nhân</p>
+                  <p className="text-[10px] text-on-surface-variant">Quản lý & Lưu các mã giảm giá của bạn</p>
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+            </button>
+
             <button 
               onClick={() => setCurrentView('membership')} 
               className="w-full flex items-center justify-between p-4 hover:bg-surface-container-low active:bg-surface-container transition-colors"

@@ -10,6 +10,7 @@ import com.nlufood.repository.NotificationRepository;
 import com.nlufood.repository.UserRepository;
 import com.nlufood.repository.RestaurantRepository;
 import com.nlufood.repository.MenuItemRepository;
+import com.nlufood.repository.SavedVoucherRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -35,13 +36,27 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Autowired
     private MenuItemRepository menuItemRepository;
 
+    @Autowired
+    private SavedVoucherRepository savedVoucherRepository;
+
     @Override
     public void run(String... args) throws Exception {
         seedUsers();
         seedPromoCodes();
         seedRestaurantsAndMenuItems();
         seedNotifications();
+        seedSavedVouchers();
         migrateCategories();
+    }
+
+    private void seedSavedVouchers() {
+        userRepository.findByEmail("student@hcmuaf.edu.vn").ifPresent(student -> {
+            if (savedVoucherRepository.findByUserId(student.getId()).isEmpty()) {
+                promoCodeRepository.findByCodeIgnoreCase("NLUSTUDENT").ifPresent(p1 -> savedVoucherRepository.save(new com.nlufood.model.SavedVoucher(student, p1)));
+                promoCodeRepository.findByCodeIgnoreCase("FREESHIP").ifPresent(p2 -> savedVoucherRepository.save(new com.nlufood.model.SavedVoucher(student, p2)));
+                System.out.println(">> Seeded default saved vouchers for student.");
+            }
+        });
     }
 
     private void seedUsers() {

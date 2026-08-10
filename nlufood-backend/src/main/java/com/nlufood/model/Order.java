@@ -29,6 +29,11 @@ public class Order {
     private String cancelReason;
     private String paymentMethod;
     
+    // Driver assignment fields for real-time tracking
+    private String driverName;
+    private String driverPhone;
+    private String driverLicensePlate;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> orderItems;
 
@@ -62,7 +67,12 @@ public class Order {
     public void setCancelReason(String cancelReason) { this.cancelReason = cancelReason; }
     public String getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+    public String getDriverName() { return driverName; }
+    public void setDriverName(String driverName) { this.driverName = driverName; }
+    public String getDriverPhone() { return driverPhone; }
+    public void setDriverPhone(String driverPhone) { this.driverPhone = driverPhone; }
+    public String getDriverLicensePlate() { return driverLicensePlate; }
+    public void setDriverLicensePlate(String driverLicensePlate) { this.driverLicensePlate = driverLicensePlate; }
     public List<OrderItem> getOrderItems() { return orderItems; }
     public void setOrderItems(List<OrderItem> orderItems) { this.orderItems = orderItems; }
 }
-
