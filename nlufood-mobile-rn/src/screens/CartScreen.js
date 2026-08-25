@@ -130,7 +130,7 @@ export default function CartScreen({ navigation, cart, setCart, user }) {
                   </View>
                 </View>
               ))}
-            </>
+            </View>
 
             {/* Address */}
             <View style={styles.card}>
