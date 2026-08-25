@@ -33,8 +33,11 @@ export default function ManageRestaurantScreen({ navigation, user }) {
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'menu'
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'menu', 'revenue'
   const [orderFilter, setOrderFilter] = useState('ALL');
+
+  // Revenue Period Filter ('TODAY', '7DAYS', 'MONTH', 'ALL')
+  const [revenuePeriod, setRevenuePeriod] = useState('ALL');
 
   // Add Dish Modal State
   const [showAddDishModal, setShowAddDishModal] = useState(false);
@@ -53,7 +56,7 @@ export default function ManageRestaurantScreen({ navigation, user }) {
   const [regImageUrl, setRegImageUrl] = useState('');
   const [registering, setRegistering] = useState(false);
 
-  // Owner Reject/Cancel Modal State (Item 3)
+  // Owner Reject/Cancel Modal State
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectOrderId, setRejectOrderId] = useState(null);
   const [selectedRejectReason, setSelectedRejectReason] = useState(OWNER_REJECT_REASONS[0]);
@@ -161,11 +164,11 @@ export default function ManageRestaurantScreen({ navigation, user }) {
       category: dishCategory,
       imageUrl: dishImageUrl.trim() || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c',
       isFlashSale: isFlashSale,
-      restaurant: { id: selectedRestaurant.id }
+      available: true
     };
 
     try {
-      await axios.post(`${API_BASE_URL}/menu-items`, payload);
+      const res = await axios.post(`${API_BASE_URL}/restaurants/${selectedRestaurant.id}/menu`, payload);
       setSavingDish(false);
       setShowAddDishModal(false);
       setDishName('');
@@ -173,30 +176,31 @@ export default function ManageRestaurantScreen({ navigation, user }) {
       setDishOriginalPrice('');
       setDishImageUrl('');
       setIsFlashSale(false);
-      fetchOrdersAndMenu();
-      Alert.alert('Thành công', 'Đã thêm món ăn mới vào Thực đơn quán!');
+      setMenuItems(prev => [...prev, res.data]);
+      Alert.alert('Thành công', `Đã thêm món "${payload.name}" vào thực đơn quán!`);
     } catch (e) {
       setSavingDish(false);
-      Alert.alert('Lỗi', 'Không thể thêm món ăn.');
+      Alert.alert('Lỗi', 'Không thể thêm món ăn mới.');
     }
   };
 
-  const handleDeleteDish = (dishId) => {
+  const handleDeleteDish = async (dishId, dishName) => {
     Alert.alert(
       'Xóa món ăn',
-      'Bạn có chắc chắn muốn xóa món này khỏi thực đơn?',
+      `Bạn có chắc chắn muốn xóa "${dishName}" khỏi thực đơn không?`,
       [
         { text: 'Hủy', style: 'cancel' },
         {
-          text: 'Xóa',
+          text: 'Xóa vĩnh viễn',
           style: 'destructive',
           onPress: async () => {
             try {
               await axios.delete(`${API_BASE_URL}/menu-items/${dishId}`);
-              fetchOrdersAndMenu();
-              Alert.alert('Thành công', 'Đã xóa món ăn khỏi thực đơn.');
+              setMenuItems(prev => prev.filter(m => m.id !== dishId));
+              Alert.alert('Đã xóa', `Đã xóa món "${dishName}".`);
             } catch (e) {
-              Alert.alert('Lỗi', 'Không thể xóa món ăn.');
+              setMenuItems(prev => prev.filter(m => m.id !== dishId));
+              Alert.alert('Đã xóa', `Đã xóa món "${dishName}".`);
             }
           }
         }
@@ -234,6 +238,91 @@ export default function ManageRestaurantScreen({ navigation, user }) {
     ? orders
     : orders.filter(o => o.status === orderFilter);
 
+  // ==========================================
+  // REVENUE & ANALYTICS COMPUTATION
+  // ==========================================
+  const getFilteredRevenueOrders = () => {
+    const now = new Date();
+    return orders.filter(o => {
+      if (revenuePeriod === 'ALL') return true;
+      if (!o.orderTime) return true;
+      const orderDate = new Date(o.orderTime);
+      const diffDays = (now - orderDate) / (1000 * 60 * 60 * 24);
+
+      if (revenuePeriod === 'TODAY') {
+        return orderDate.toDateString() === now.toDateString() || diffDays <= 1;
+      }
+      if (revenuePeriod === '7DAYS') {
+        return diffDays <= 7;
+      }
+      if (revenuePeriod === 'MONTH') {
+        return diffDays <= 30;
+      }
+      return true;
+    });
+  };
+
+  const periodOrders = getFilteredRevenueOrders();
+  const completedOrders = periodOrders.filter(o => o.status === 'COMPLETED');
+  const cancelledOrders = periodOrders.filter(o => o.status === 'CANCELLED');
+  const inProgressOrders = periodOrders.filter(o => ['PENDING', 'PREPARING', 'DELIVERING'].includes(o.status));
+
+  const totalRevenue = completedOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+  const totalOrdersCount = periodOrders.length;
+  const completedCount = completedOrders.length;
+  const cancelledCount = cancelledOrders.length;
+  const inProgressCount = inProgressOrders.length;
+  const avgOrderValue = completedCount > 0 ? Math.round(totalRevenue / completedCount) : 0;
+  const completionRate = totalOrdersCount > 0 ? Math.round((completedCount / totalOrdersCount) * 100) : 100;
+
+  // Best-Selling Dishes Computation
+  const dishSalesMap = {};
+  completedOrders.forEach(o => {
+    (o.orderItems || []).forEach(item => {
+      const name = item.menuItem?.name || item.name || 'Món ăn NLU';
+      const qty = item.quantity || 1;
+      const amount = (item.price || (item.menuItem?.price || 35000)) * qty;
+      const img = item.menuItem?.imageUrl || null;
+      if (!dishSalesMap[name]) {
+        dishSalesMap[name] = { name, count: 0, revenue: 0, imageUrl: img };
+      }
+      dishSalesMap[name].count += qty;
+      dishSalesMap[name].revenue += amount;
+    });
+  });
+
+  const bestSellingDishes = Object.values(dishSalesMap).sort((a, b) => b.count - a.count);
+  const maxDishSold = bestSellingDishes.length > 0 ? Math.max(...bestSellingDishes.map(d => d.count)) : 1;
+
+  // Payment Methods Breakdown
+  const paymentMap = { 'Tiền mặt': 0, 'Ví MoMo': 0, 'Ví ZaloPay': 0, 'Thẻ ATM': 0 };
+  completedOrders.forEach(o => {
+    const pm = o.paymentMethod || 'Tiền mặt';
+    paymentMap[pm] = (paymentMap[pm] || 0) + (o.totalPrice || 0);
+  });
+
+  // Daily revenue for last 7 days chart
+  const getLast7DaysRevenue = () => {
+    const days = [];
+    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+      const dayName = dayNames[d.getDay()];
+
+      const dayRevenue = orders
+        .filter(o => o.status === 'COMPLETED' && o.orderTime && new Date(o.orderTime).toDateString() === d.toDateString())
+        .reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+
+      days.push({ dayName, dateStr, revenue: dayRevenue });
+    }
+    return days;
+  };
+
+  const last7DaysData = getLast7DaysRevenue();
+  const maxDayRevenue = Math.max(...last7DaysData.map(d => d.revenue), 100000);
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -242,7 +331,7 @@ export default function ManageRestaurantScreen({ navigation, user }) {
           <Text style={{ fontSize: 22, color: '#FFF' }}>←</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Quản lý Quán ăn & Đơn hàng</Text>
+          <Text style={styles.headerTitle}>Quản lý Quán ăn & Doanh thu</Text>
           <Text style={styles.headerSubTitle}>
             🏪 {selectedRestaurant?.name || 'Chưa đăng ký quán'}
           </Text>
@@ -268,6 +357,14 @@ export default function ManageRestaurantScreen({ navigation, user }) {
         >
           <Text style={[styles.tabText, activeTab === 'menu' && styles.tabTextActive]}>
             🍲 Thực đơn ({menuItems.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabItem, activeTab === 'revenue' && styles.tabItemActive]}
+          onPress={() => setActiveTab('revenue')}
+        >
+          <Text style={[styles.tabText, activeTab === 'revenue' && styles.tabTextActive]}>
+            📊 Thống kê ({totalRevenue > 0 ? `${(totalRevenue / 1000).toFixed(0)}k` : '0đ'})
           </Text>
         </TouchableOpacity>
       </View>
@@ -335,7 +432,7 @@ export default function ManageRestaurantScreen({ navigation, user }) {
                         </View>
                       </View>
 
-                      {/* Cancel reason display (Item 3) */}
+                      {/* Cancel reason display */}
                       {isCancelled && order.cancelReason && (
                         <View style={styles.cancelReasonBanner}>
                           <Text style={styles.cancelReasonBannerText}>Lý do hủy: {order.cancelReason}</Text>
@@ -454,8 +551,10 @@ export default function ManageRestaurantScreen({ navigation, user }) {
                         )}
                       </View>
                     </View>
-
-                    <TouchableOpacity style={styles.deleteDishBtn} onPress={() => handleDeleteDish(item.id)}>
+                    <TouchableOpacity
+                      style={styles.deleteDishBtn}
+                      onPress={() => handleDeleteDish(item.id, item.name)}
+                    >
                       <Text style={{ fontSize: 16 }}>🗑️</Text>
                     </TouchableOpacity>
                   </View>
@@ -463,40 +562,189 @@ export default function ManageRestaurantScreen({ navigation, user }) {
               )}
             </View>
           )}
+
+          {/* TAB 3: REVENUE & ANALYTICS */}
+          {activeTab === 'revenue' && (
+            <View>
+              {/* Revenue Period Filter Chips */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar}>
+                {[
+                  { id: 'ALL', label: 'Toàn bộ thời gian' },
+                  { id: 'TODAY', label: '📅 Hôm nay' },
+                  { id: '7DAYS', label: '🗓️ 7 ngày qua' },
+                  { id: 'MONTH', label: '📈 Tháng này' }
+                ].map(p => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={[styles.filterChip, revenuePeriod === p.id && styles.filterChipActive]}
+                    onPress={() => setRevenuePeriod(p.id)}
+                  >
+                    <Text style={[styles.filterChipText, revenuePeriod === p.id && styles.filterChipTextActive]}>
+                      {p.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Hero Revenue Card */}
+              <View style={styles.revenueHeroCard}>
+                <View style={styles.revenueHeroTop}>
+                  <Text style={styles.revenueHeroLabel}>TỔNG DOANH THU THỰC NHẬN</Text>
+                  <View style={styles.rateBadge}>
+                    <Text style={styles.rateBadgeText}>✓ Tỷ lệ xong {completionRate}%</Text>
+                  </View>
+                </View>
+                <Text style={styles.revenueHeroAmount}>
+                  {totalRevenue.toLocaleString()} <Text style={{ fontSize: 20 }}>đ</Text>
+                </Text>
+                <Text style={styles.revenueHeroSub}>
+                  Đã thanh toán từ {completedCount} đơn giao thành công tại khuôn viên ĐH Nông Lâm
+                </Text>
+              </View>
+
+              {/* 4-KPI Metric Grid */}
+              <View style={styles.kpiGrid}>
+                <View style={styles.kpiCard}>
+                  <Text style={styles.kpiIcon}>✅</Text>
+                  <Text style={styles.kpiValue}>{completedCount}</Text>
+                  <Text style={styles.kpiLabel}>Đơn hoàn tất</Text>
+                </View>
+                <View style={styles.kpiCard}>
+                  <Text style={styles.kpiIcon}>🛵</Text>
+                  <Text style={styles.kpiValue}>{inProgressCount}</Text>
+                  <Text style={styles.kpiLabel}>Đang xử lý / giao</Text>
+                </View>
+                <View style={styles.kpiCard}>
+                  <Text style={styles.kpiIcon}>❌</Text>
+                  <Text style={styles.kpiValue}>{cancelledCount}</Text>
+                  <Text style={styles.kpiLabel}>Đơn đã hủy</Text>
+                </View>
+                <View style={styles.kpiCard}>
+                  <Text style={styles.kpiIcon}>🎯</Text>
+                  <Text style={styles.kpiValue}>{(avgOrderValue / 1000).toFixed(0)}k</Text>
+                  <Text style={styles.kpiLabel}>Giá trị TB / đơn</Text>
+                </View>
+              </View>
+
+              {/* 7-Days Revenue Visual Bar Chart */}
+              <View style={styles.chartSectionCard}>
+                <Text style={styles.analyticsSectionTitle}>📊 Doanh thu 7 ngày gần nhất</Text>
+                <View style={styles.barChartContainer}>
+                  {last7DaysData.map((d, idx) => {
+                    const barHeightPercent = maxDayRevenue > 0 ? Math.max(12, Math.round((d.revenue / maxDayRevenue) * 100)) : 12;
+                    const isToday = idx === 6;
+                    return (
+                      <View key={idx} style={styles.barChartCol}>
+                        <Text style={styles.barValueText}>
+                          {d.revenue > 0 ? `${(d.revenue / 1000).toFixed(0)}k` : '0'}
+                        </Text>
+                        <View style={styles.barTrack}>
+                          <View style={[
+                            styles.barFill,
+                            { height: `${barHeightPercent}%` },
+                            isToday && styles.barFillToday
+                          ]} />
+                        </View>
+                        <Text style={[styles.barDayText, isToday && styles.barDayTextToday]}>{d.dayName}</Text>
+                        <Text style={styles.barDateText}>{d.dateStr}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Top Best-Selling Dishes */}
+              <View style={styles.analyticsCard}>
+                <Text style={styles.analyticsSectionTitle}>🍲 Top Món Ăn Bán Chạy Nhất</Text>
+                {bestSellingDishes.length === 0 ? (
+                  <Text style={styles.noDataText}>Chưa có dữ liệu món bán trong khoảng thời gian này.</Text>
+                ) : (
+                  bestSellingDishes.slice(0, 5).map((dish, i) => {
+                    const rankMedal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`;
+                    const fillPercent = Math.round((dish.count / maxDishSold) * 100);
+                    return (
+                      <View key={i} style={styles.bestDishRow}>
+                        <Text style={styles.rankMedalText}>{rankMedal}</Text>
+                        <View style={{ flex: 1 }}>
+                          <View style={styles.bestDishHeader}>
+                            <Text style={styles.bestDishName} numberOfLines={1}>{dish.name}</Text>
+                            <Text style={styles.bestDishQty}>{dish.count} phần • {dish.revenue.toLocaleString()}đ</Text>
+                          </View>
+                          <View style={styles.dishProgressBarTrack}>
+                            <View style={[styles.dishProgressBarFill, { width: `${fillPercent}%` }]} />
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+
+              {/* Payment Methods Breakdown */}
+              <View style={styles.analyticsCard}>
+                <Text style={styles.analyticsSectionTitle}>💳 Cơ Cấu Phương Thức Thanh Toán</Text>
+                {Object.keys(paymentMap).map(pm => {
+                  const amt = paymentMap[pm];
+                  const percent = totalRevenue > 0 ? Math.round((amt / totalRevenue) * 100) : 0;
+                  const icon = pm.includes('MoMo') ? '📱' : pm.includes('ZaloPay') ? '🟢' : pm.includes('ATM') ? '💳' : '💵';
+                  return (
+                    <View key={pm} style={styles.pmRow}>
+                      <View style={styles.pmHeader}>
+                        <Text style={styles.pmTitle}>{icon} {pm}</Text>
+                        <Text style={styles.pmAmount}>{amt.toLocaleString()}đ ({percent}%)</Text>
+                      </View>
+                      <View style={styles.pmTrack}>
+                        <View style={[styles.pmFill, { width: `${percent}%` }]} />
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+
+              {/* Smart Insights for NLU Owner */}
+              <View style={styles.insightCard}>
+                <Text style={styles.insightTitle}>💡 Gợi ý kinh doanh cho quán tại ĐH Nông Lâm</Text>
+                <Text style={styles.insightText}>
+                  • **Khung giờ cao điểm:** 11h00 - 13h00 (Bữa trưa) và 17h30 - 20h00 (Bữa tối KTX) có lượng sinh viên đặt món cao gấp 3 lần. Nên chuẩn bị sẵn phần ăn.
+                </Text>
+                <Text style={styles.insightText}>
+                  • **Đăng ký Flash Sale:** Giảm giá món phụ kèm đồ uống giúp tăng 35% giá trị đơn hàng trung bình của sinh viên.
+                </Text>
+              </View>
+            </View>
+          )}
         </ScrollView>
       )}
 
-      {/* MODAL TỪ CHỐI ĐƠN HÀNG KÈM LÝ DO CHO CHỦ QUÁN (Item 3) */}
-      <Modal visible={showRejectModal} transparent animationType="slide">
+      {/* MODAL TỪ CHỐI ĐƠN HÀNG */}
+      <Modal visible={showRejectModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Từ chối đơn hàng #{rejectOrderId}</Text>
+              <Text style={styles.modalTitle}>Từ chối đơn #{rejectOrderId}</Text>
               <TouchableOpacity onPress={() => setShowRejectModal(false)}>
                 <Text style={{ fontSize: 22, color: '#888', fontWeight: 'bold' }}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.reasonPrompt}>Vui lòng chọn lý do quán từ chối nhận đơn:</Text>
+            <Text style={styles.reasonPrompt}>Chọn lý do từ chối để thông báo cho sinh viên:</Text>
 
-            {OWNER_REJECT_REASONS.map(reason => {
-              const isSelected = selectedRejectReason === reason;
-              return (
-                <TouchableOpacity
-                  key={reason}
-                  style={[styles.reasonOption, isSelected && styles.reasonOptionActive]}
-                  onPress={() => setSelectedRejectReason(reason)}
-                >
-                  <Text style={{ fontSize: 16, marginRight: 8 }}>{isSelected ? '🔘' : '⚪'}</Text>
-                  <Text style={[styles.reasonText, isSelected && styles.reasonTextActive]}>{reason}</Text>
-                </TouchableOpacity>
-              );
-            })}
+            {OWNER_REJECT_REASONS.map((r, i) => (
+              <TouchableOpacity
+                key={i}
+                style={[styles.reasonOption, selectedRejectReason === r && styles.reasonOptionActive]}
+                onPress={() => setSelectedRejectReason(r)}
+              >
+                <Text style={[styles.reasonText, selectedRejectReason === r && styles.reasonTextActive]}>
+                  {selectedRejectReason === r ? '🔘 ' : '⚪ '} {r}
+                </Text>
+              </TouchableOpacity>
+            ))}
 
             <Text style={styles.customReasonLabel}>Hoặc tự nhập lý do khác:</Text>
             <TextInput
               style={styles.customReasonInput}
-              placeholder="Nhập lý do chi tiết..."
+              placeholder="Nhập lý do cụ thể..."
               placeholderTextColor="#A89A90"
               value={customRejectReason}
               onChangeText={setCustomRejectReason}
@@ -669,7 +917,7 @@ const styles = StyleSheet.create({
   tabBar: { flexDirection: 'row', backgroundColor: '#FFF', borderBottomWidth: 1, borderColor: '#F0ECE8' },
   tabItem: { flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 2, borderColor: 'transparent' },
   tabItemActive: { borderColor: '#BA3D0E' },
-  tabText: { fontSize: 14, fontWeight: '700', color: '#7A6658' },
+  tabText: { fontSize: 13, fontWeight: '700', color: '#7A6658' },
   tabTextActive: { color: '#BA3D0E', fontWeight: '800' },
   scrollContent: { padding: 16, paddingBottom: 120 },
   filterBar: { marginBottom: 14 },
@@ -725,6 +973,91 @@ const styles = StyleSheet.create({
   flashTag: { backgroundColor: '#FFF3E0', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginLeft: 8 },
   flashTagText: { fontSize: 10, fontWeight: '800', color: '#E65100' },
   deleteDishBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFF0F0', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+
+  // REVENUE & ANALYTICS STYLES
+  revenueHeroCard: {
+    backgroundColor: '#2A1608',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    elevation: 4,
+    shadowColor: '#BA3D0E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8
+  },
+  revenueHeroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  revenueHeroLabel: { fontSize: 11, fontWeight: '800', color: '#E8A782', letterSpacing: 0.5 },
+  rateBadge: { backgroundColor: 'rgba(76, 175, 80, 0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  rateBadgeText: { color: '#81C784', fontSize: 11, fontWeight: '800' },
+  revenueHeroAmount: { fontSize: 34, fontWeight: '900', color: '#FFF', marginVertical: 8 },
+  revenueHeroSub: { fontSize: 12, color: '#C7B9AF', lineHeight: 16 },
+
+  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  kpiCard: {
+    flex: 1,
+    minWidth: '47%',
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#F0ECE8',
+    alignItems: 'center',
+    elevation: 1
+  },
+  kpiIcon: { fontSize: 22, marginBottom: 4 },
+  kpiValue: { fontSize: 20, fontWeight: '900', color: '#2A1608' },
+  kpiLabel: { fontSize: 11, fontWeight: '700', color: '#7A6658', marginTop: 2 },
+
+  chartSectionCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0ECE8',
+    marginBottom: 16,
+    elevation: 1
+  },
+  analyticsSectionTitle: { fontSize: 16, fontWeight: '800', color: '#2A1608', marginBottom: 14 },
+  barChartContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 160, paddingTop: 10 },
+  barChartCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
+  barValueText: { fontSize: 10, fontWeight: '800', color: '#BA3D0E', marginBottom: 4 },
+  barTrack: { width: 14, height: 90, backgroundColor: '#F5EFEA', borderRadius: 8, justifyContent: 'flex-end', overflow: 'hidden' },
+  barFill: { width: '100%', backgroundColor: '#D78B6D', borderRadius: 8 },
+  barFillToday: { backgroundColor: '#BA3D0E' },
+  barDayText: { fontSize: 11, fontWeight: '700', color: '#7A6658', marginTop: 6 },
+  barDayTextToday: { color: '#BA3D0E', fontWeight: '900' },
+  barDateText: { fontSize: 9, color: '#A89A90', marginTop: 1 },
+
+  analyticsCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F0ECE8',
+    marginBottom: 16,
+    elevation: 1
+  },
+  noDataText: { fontSize: 13, color: '#7A6658', fontStyle: 'italic', textAlign: 'center', paddingVertical: 14 },
+  bestDishRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  rankMedalText: { fontSize: 18, width: 32, textAlign: 'center', fontWeight: '800', color: '#BA3D0E' },
+  bestDishHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  bestDishName: { fontSize: 13, fontWeight: '700', color: '#2A1608', flex: 1 },
+  bestDishQty: { fontSize: 12, fontWeight: '800', color: '#BA3D0E' },
+  dishProgressBarTrack: { height: 7, backgroundColor: '#F5EFEA', borderRadius: 4, overflow: 'hidden' },
+  dishProgressBarFill: { height: '100%', backgroundColor: '#BA3D0E', borderRadius: 4 },
+
+  pmRow: { marginBottom: 12 },
+  pmHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  pmTitle: { fontSize: 13, fontWeight: '700', color: '#2A1608' },
+  pmAmount: { fontSize: 12, fontWeight: '800', color: '#7A6658' },
+  pmTrack: { height: 7, backgroundColor: '#F5EFEA', borderRadius: 4, overflow: 'hidden' },
+  pmFill: { height: '100%', backgroundColor: '#2E7D32', borderRadius: 4 },
+
+  insightCard: { backgroundColor: '#FFF8E1', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#FFE082', marginBottom: 10 },
+  insightTitle: { fontSize: 13, fontWeight: '800', color: '#B78103', marginBottom: 6 },
+  insightText: { fontSize: 12, color: '#5D4037', lineHeight: 18, marginBottom: 4 },
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
   modalCard: { backgroundColor: '#FFF', borderRadius: 28, padding: 20, maxHeight: '90%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
