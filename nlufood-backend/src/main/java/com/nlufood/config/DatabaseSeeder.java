@@ -132,10 +132,26 @@ public class DatabaseSeeder implements CommandLineRunner {
                 if (i % 4 == 1) img = "https://images.unsplash.com/photo-1569718212165-3a8278d5f624";
                 if (i % 4 == 2) img = "https://images.unsplash.com/photo-1551024709-8f23befc6f87";
                 if (i % 4 == 3) img = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd";
-                restaurantRepository.save(new Restaurant(null, names[i], "Linh Trung, TP. Thủ Đức", 4.5 + (i % 5) * 0.1, img, statuses[i], (i % 2 == 0 ? owner1 : owner2)));
             }
+        }
 
-            // Seed MenuItems
+        // Ensure all restaurants have non-null valid status
+        List<Restaurant> allR = restaurantRepository.findAll();
+        for (int i = 0; i < allR.size(); i++) {
+            Restaurant r = allR.get(i);
+            if (r.getStatus() == null || r.getStatus().isBlank()) {
+                if (i == 15 || i == 16 || i == 17) {
+                    r.setStatus("PENDING");
+                } else if (i == 18) {
+                    r.setStatus("REJECTED");
+                } else {
+                    r.setStatus("APPROVED");
+                }
+                restaurantRepository.save(r);
+            }
+        }
+
+        if (menuItemRepository.count() < 10) {
             Restaurant r1 = restaurantRepository.findAll().get(0);
             Restaurant r2 = restaurantRepository.findAll().get(1);
             Restaurant r3 = restaurantRepository.findAll().get(2);

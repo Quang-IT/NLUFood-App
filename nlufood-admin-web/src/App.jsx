@@ -246,22 +246,30 @@ export default function App() {
                           <td style={{ padding: '16px', color: '#cbd5e1' }}>{r.address}</td>
                           <td style={{ padding: '16px', color: '#f59e0b', fontWeight: '700' }}>⭐ {r.rating}</td>
                           <td style={{ padding: '16px' }}>
-                            <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', backgroundColor: r.status === 'APPROVED' ? '#064e3b' : (r.status === 'PENDING' ? '#78350f' : '#7f1d1d'), color: r.status === 'APPROVED' ? '#34d399' : (r.status === 'PENDING' ? '#fbbf24' : '#f87171') }}>
-                              {r.status === 'APPROVED' ? 'Đã duyệt' : (r.status === 'PENDING' ? 'Chờ duyệt' : 'Từ chối')}
+                            <span style={{ 
+                              padding: '6px 12px', 
+                              borderRadius: '20px', 
+                              fontSize: '12px', 
+                              fontWeight: '700', 
+                              backgroundColor: (r.status === 'APPROVED' || !r.status) ? '#064e3b' : (r.status === 'PENDING' ? '#78350f' : '#7f1d1d'), 
+                              color: (r.status === 'APPROVED' || !r.status) ? '#34d399' : (r.status === 'PENDING' ? '#fbbf24' : '#f87171'),
+                              border: `1px solid ${(r.status === 'APPROVED' || !r.status) ? '#059669' : (r.status === 'PENDING' ? '#d97706' : '#dc2626')}`
+                            }}>
+                              {(r.status === 'APPROVED' || !r.status) ? '✅ Đã duyệt' : (r.status === 'PENDING' ? '⏳ Chờ duyệt' : '❌ Từ chối')}
                             </span>
                           </td>
                           <td style={{ padding: '16px' }}>
                             {r.status === 'PENDING' && (
                               <div style={{ display: 'flex', gap: '8px' }}>
-                                <button onClick={() => handleRestaurantAction(r.id, 'approve')} style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#10b981', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '600' }}>✅ Duyệt</button>
-                                <button onClick={() => handleRestaurantAction(r.id, 'reject')} style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '600' }}>❌ Từ chối</button>
+                                <button onClick={() => handleRestaurantAction(r.id, 'approve')} style={{ padding: '6px 12px', borderRadius: '8px', backgroundColor: '#10b981', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>✅ Duyệt</button>
+                                <button onClick={() => handleRestaurantAction(r.id, 'reject')} style={{ padding: '6px 12px', borderRadius: '8px', backgroundColor: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>❌ Từ chối</button>
                               </div>
                             )}
-                            {r.status === 'APPROVED' && (
-                              <button onClick={() => handleRestaurantAction(r.id, 'reject')} style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#334155', color: '#f87171', border: 'none', cursor: 'pointer' }}>Tạm dừng</button>
+                            {(r.status === 'APPROVED' || !r.status) && (
+                              <button onClick={() => handleRestaurantAction(r.id, 'reject')} style={{ padding: '6px 14px', borderRadius: '8px', backgroundColor: '#334155', color: '#f87171', border: '1px solid #475569', cursor: 'pointer', fontWeight: '600' }}>Tạm dừng</button>
                             )}
                             {r.status === 'REJECTED' && (
-                              <button onClick={() => handleRestaurantAction(r.id, 'approve')} style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#10b981', color: '#fff', border: 'none', cursor: 'pointer' }}>Duyệt lại</button>
+                              <button onClick={() => handleRestaurantAction(r.id, 'approve')} style={{ padding: '6px 14px', borderRadius: '8px', backgroundColor: '#10b981', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '600' }}>🔄 Duyệt lại</button>
                             )}
                           </td>
                         </tr>
