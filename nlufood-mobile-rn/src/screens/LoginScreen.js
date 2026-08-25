@@ -5,7 +5,6 @@ import {
   View,
   TextInput,
   TouchableOpacity,
-  Image,
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,17 +13,19 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../config';
 
 export default function LoginScreen({ onLoginSuccess }) {
   const [mode, setMode] = useState('login'); // 'login', 'register', 'forgot'
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('student@hcmuaf.edu.vn');
+  const [password, setPassword] = useState('123');
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [role, setRole] = useState('STUDENT');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [role, setRole] = useState('STUDENT');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -39,21 +40,27 @@ export default function LoginScreen({ onLoginSuccess }) {
         password: password.trim()
       });
       setLoading(false);
-      if (response.data.success) {
-        await AsyncStorage.setItem('user_session', JSON.stringify(response.data.user));
-        onLoginSuccess(response.data.user);
+      const userData = response.data?.user || response.data;
+      if (userData && (userData.id || userData.email)) {
+        await AsyncStorage.setItem('user_session', JSON.stringify(userData));
+        onLoginSuccess(userData);
       } else {
-        Alert.alert('Lỗi đăng nhập', response.data.message || 'Đăng nhập thất bại.');
+        Alert.alert('Lỗi đăng nhập', response.data?.message || 'Đăng nhập thất bại.');
       }
     } catch (error) {
       setLoading(false);
-      Alert.alert('Lỗi kết nối', 'Không thể kết nối tới máy chủ. Vui lòng kiểm tra IP và Wi-Fi!');
+      const msg = error.response?.data?.message || 'Email hoặc mật khẩu không chính xác!';
+      Alert.alert('Đăng nhập thất bại', msg);
     }
   };
 
   const handleRegister = async () => {
     if (!name.trim() || !email.trim() || !password.trim() || !phoneNumber.trim()) {
-      Alert.alert('Thông báo', 'Vui lòng điền đầy đủ Tên, Email, Mật khẩu và SĐT!');
+      Alert.alert('Thông báo', 'Vui lòng điền đầy đủ Họ và tên, Email, Số điện thoại và Mật khẩu!');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Thông báo', 'Mật khẩu xác nhận không khớp!');
       return;
     }
     setLoading(true);
@@ -66,15 +73,17 @@ export default function LoginScreen({ onLoginSuccess }) {
         role
       });
       setLoading(false);
-      if (response.data.success) {
+      const userData = response.data?.user || response.data;
+      if (userData && (userData.id || response.data?.success)) {
         Alert.alert('Thành công', 'Đăng ký tài khoản thành công! Vui lòng đăng nhập.');
         setMode('login');
       } else {
-        Alert.alert('Lỗi đăng ký', response.data.message || 'Email này đã được sử dụng.');
+        Alert.alert('Lỗi đăng ký', response.data?.message || 'Đăng ký không thành công.');
       }
     } catch (error) {
       setLoading(false);
-      Alert.alert('Lỗi kết nối', 'Đăng ký thất bại.');
+      const msg = error.response?.data?.message || 'Email này đã được sử dụng hoặc đăng ký thất bại.';
+      Alert.alert('Lỗi đăng ký', msg);
     }
   };
 
@@ -90,181 +99,205 @@ export default function LoginScreen({ onLoginSuccess }) {
         newPassword: newPassword.trim()
       });
       setLoading(false);
-      if (response.data.success) {
+      if (response.data?.success || response.status === 200) {
         Alert.alert('Thành công', 'Đặt lại mật khẩu mới thành công!');
         setMode('login');
       } else {
-        Alert.alert('Lỗi', response.data.message);
+        Alert.alert('Lỗi', response.data?.message || 'Không thể đặt lại mật khẩu.');
       }
     } catch (error) {
       setLoading(false);
-      Alert.alert('Lỗi kết nối', 'Không thể đặt lại mật khẩu.');
+      const msg = error.response?.data?.message || 'Không thể đặt lại mật khẩu.';
+      Alert.alert('Lỗi', msg);
     }
   };
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#FFFFFF' }}
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.headerBox}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>🍕</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.card}>
+          {/* Logo */}
+          <View style={styles.logoBox}>
+            <MaterialCommunityIcons name="food" size={32} color="#BA3D0E" />
           </View>
-          <Text style={styles.titleText}>NLUFood Mobile</Text>
-          <Text style={styles.subTitleText}>Đặt đồ ăn nội khu ĐH Nông Lâm TP.HCM</Text>
-        </View>
 
-        {/* Tab switcher */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tabButton, mode === 'login' && styles.tabActive]}
-            onPress={() => setMode('login')}
-          >
-            <Text style={[styles.tabText, mode === 'login' && styles.tabTextActive]}>Đăng nhập</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, mode === 'register' && styles.tabActive]}
-            onPress={() => setMode('register')}
-          >
-            <Text style={[styles.tabText, mode === 'register' && styles.tabTextActive]}>Đăng ký</Text>
-          </TouchableOpacity>
-        </View>
+          {/* Title */}
+          <Text style={styles.title}>NLUFood</Text>
+          <Text style={styles.subtitle}>
+            {mode === 'login'
+              ? 'Đăng nhập để đặt món ăn yêu thích của bạn'
+              : mode === 'register'
+              ? 'Tạo tài khoản mới để bắt đầu đặt hàng'
+              : 'Khôi phục mật khẩu tài khoản'}
+          </Text>
 
-        {/* FORMS */}
-        {mode === 'login' && (
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Email sinh viên / Quán</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="student@hcmuaf.edu.vn"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+          {/* Form Fields */}
+          {mode === 'register' && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>HỌ VÀ TÊN</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="person-outline" size={20} color="#7A6658" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nguyễn Văn A"
+                  placeholderTextColor="#A89A90"
+                  value={name}
+                  onChangeText={setName}
+                />
+              </View>
+            </View>
+          )}
 
-            <Text style={styles.label}>Mật khẩu</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-
-            <TouchableOpacity style={styles.forgotBtn} onPress={() => setMode('forgot')}>
-              <Text style={styles.forgotText}>Quên mật khẩu?</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin} disabled={loading}>
-              {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Đăng nhập</Text>}
-            </TouchableOpacity>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>EMAIL</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="mail-outline" size={20} color="#7A6658" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="student@hcmuaf.edu.vn"
+                placeholderTextColor="#A89A90"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
           </View>
-        )}
 
-        {mode === 'register' && (
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Họ và tên</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nguyễn Văn A"
-              placeholderTextColor="#999"
-              value={name}
-              onChangeText={setName}
-            />
+          {mode === 'register' && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>SỐ ĐIỆN THOẠI</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="call-outline" size={20} color="#7A6658" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="0912345678"
+                  placeholderTextColor="#A89A90"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </View>
+          )}
 
-            <Text style={styles.label}>Số điện thoại</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0912345678"
-              placeholderTextColor="#999"
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-            />
+          {mode === 'login' && (
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>MẬT KHẨU</Text>
+                <TouchableOpacity onPress={() => setMode('forgot')}>
+                  <Text style={styles.forgotText}>Quên mật khẩu?</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color="#7A6658" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="#A89A90"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                />
+              </View>
+            </View>
+          )}
 
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="student@hcmuaf.edu.vn"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+          {mode === 'register' && (
+            <>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>MẬT KHẨU</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#7A6658" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="••••••••"
+                    placeholderTextColor="#A89A90"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                  />
+                </View>
+              </View>
 
-            <Text style={styles.label}>Mật khẩu</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>XÁC NHẬN MẬT KHẨU</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color="#7A6658" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="••••••••"
+                    placeholderTextColor="#A89A90"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry
+                  />
+                </View>
+              </View>
+            </>
+          )}
 
-            <Text style={styles.label}>Vai trò tài khoản</Text>
-            <View style={styles.roleRow}>
-              <TouchableOpacity
-                style={[styles.roleBtn, role === 'STUDENT' && styles.roleBtnActive]}
-                onPress={() => setRole('STUDENT')}
-              >
-                <Text style={[styles.roleText, role === 'STUDENT' && styles.roleTextActive]}>Sinh viên</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.roleBtn, role === 'OWNER' && styles.roleBtnActive]}
-                onPress={() => setRole('OWNER')}
-              >
-                <Text style={[styles.roleText, role === 'OWNER' && styles.roleTextActive]}>Chủ quán ăn</Text>
+          {mode === 'forgot' && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>MẬT KHẨU MỚI</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="refresh-outline" size={20} color="#7A6658" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nhập mật khẩu mới..."
+                  placeholderTextColor="#A89A90"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Primary Action Button */}
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={mode === 'login' ? handleLogin : mode === 'register' ? handleRegister : handleForgotPassword}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.primaryBtnText}>
+                {mode === 'login' ? 'Đăng nhập ngay' : mode === 'register' ? 'Tạo tài khoản' : 'Xác nhận đặt lại mật khẩu'}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Mode Switchers */}
+          {mode === 'login' && (
+            <View style={styles.footerBox}>
+              <Text style={styles.footerPrompt}>Chưa có tài khoản?</Text>
+              <TouchableOpacity onPress={() => setMode('register')}>
+                <Text style={styles.footerLink}>Đăng ký tài khoản mới</Text>
               </TouchableOpacity>
             </View>
+          )}
 
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleRegister} disabled={loading}>
-              {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Tạo tài khoản mới</Text>}
+          {mode === 'register' && (
+            <View style={styles.footerBox}>
+              <Text style={styles.footerPrompt}>Đã có tài khoản?</Text>
+              <TouchableOpacity onPress={() => setMode('login')}>
+                <Text style={styles.footerLink}>Đăng nhập tại đây</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {mode === 'forgot' && (
+            <TouchableOpacity style={styles.backToLoginBtn} onPress={() => setMode('login')}>
+              <Ionicons name="arrow-back" size={16} color="#BA3D0E" style={{ marginRight: 6 }} />
+              <Text style={styles.backToLoginText}>Quay lại Đăng nhập</Text>
             </TouchableOpacity>
-          </View>
-        )}
-
-        {mode === 'forgot' && (
-          <View style={styles.formGroup}>
-            <Text style={styles.titleSmall}>Đặt lại mật khẩu mới</Text>
-            <Text style={styles.descSmall}>Nhập Email đã đăng ký để tạo lại mật khẩu mới.</Text>
-
-            <Text style={styles.label}>Email tài khoản</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="student@hcmuaf.edu.vn"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <Text style={styles.label}>Mật khẩu mới</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập mật khẩu mới..."
-              placeholderTextColor="#999"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-            />
-
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleForgotPassword} disabled={loading}>
-              {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>Lưu mật khẩu mới</Text>}
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.backBtn} onPress={() => setMode('login')}>
-              <Text style={styles.backBtnText}> Quay lại Đăng nhập</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -272,157 +305,133 @@ export default function LoginScreen({ onLoginSuccess }) {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 24,
-    paddingTop: 60,
-    justifyContent: 'center',
-  },
-  headerBox: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFF0E6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  logoText: {
-    fontSize: 40,
-  },
-  titleText: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#FF6B00',
-  },
-  subTitleText: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 16,
-    padding: 4,
-    marginBottom: 24,
-  },
-  tabButton: {
     flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 12,
+    backgroundColor: '#FAFAF8',
   },
-  tabActive: {
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+    paddingTop: 50,
+    paddingBottom: 40
+  },
+  card: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3EDE8'
   },
-  tabText: {
+  logoBox: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    backgroundColor: '#FFEAE0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 16
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#BA3D0E',
+    textAlign: 'center',
+    marginBottom: 6
+  },
+  subtitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
+    color: '#7A6658',
+    textAlign: 'center',
+    marginBottom: 26,
+    lineHeight: 20,
+    paddingHorizontal: 10
   },
-  tabTextActive: {
-    color: '#FF6B00',
-    fontWeight: 'bold',
+  inputGroup: {
+    marginBottom: 16
   },
-  formGroup: {
-    width: '100%',
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6
   },
   label: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#444',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-  },
-  input: {
-    backgroundColor: '#F9F9F9',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 16,
-  },
-  forgotBtn: {
-    alignSelf: 'flex-end',
-    marginBottom: 20,
+    fontWeight: '700',
+    color: '#4A3B32',
+    letterSpacing: 0.5,
+    marginBottom: 6
   },
   forgotText: {
     fontSize: 12,
-    color: '#FF6B00',
-    fontWeight: 'bold',
+    color: '#BA3D0E',
+    fontWeight: '600'
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDF9F6',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F1E9E4',
+    paddingHorizontal: 14,
+    height: 52
+  },
+  inputIcon: {
+    marginRight: 10
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: '#2A1608'
   },
   primaryBtn: {
-    backgroundColor: '#FF6B00',
-    borderRadius: 16,
-    paddingVertical: 16,
+    backgroundColor: '#BA3D0E',
+    borderRadius: 18,
+    height: 54,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FF6B00',
+    marginTop: 10,
+    shadowColor: '#BA3D0E',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3
   },
-  btnText: {
+  primaryBtnText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700'
   },
-  roleRow: {
+  footerBox: {
+    alignItems: 'center',
+    marginTop: 22
+  },
+  footerPrompt: {
+    fontSize: 13,
+    color: '#7A6658',
+    marginBottom: 6
+  },
+  footerLink: {
+    fontSize: 14,
+    color: '#BA3D0E',
+    fontWeight: '700'
+  },
+  backToLoginBtn: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  roleBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#DDD',
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFF',
+    marginTop: 22
   },
-  roleBtnActive: {
-    backgroundColor: '#FF6B00',
-    borderColor: '#FF6B00',
-  },
-  roleText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#555',
-  },
-  roleTextActive: {
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
-  titleSmall: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  descSmall: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 20,
-  },
-  backBtn: {
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  backBtnText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: 'bold',
+  backToLoginText: {
+    fontSize: 14,
+    color: '#BA3D0E',
+    fontWeight: '700'
   }
 });

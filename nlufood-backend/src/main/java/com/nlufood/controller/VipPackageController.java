@@ -46,24 +46,30 @@ public class VipPackageController {
             return ResponseEntity.badRequest().body(Map.of("message", "Người dùng không tồn tại!"));
         }
 
-        // Determine tier based on package name/price
-        String tier = "GOLD";
-        if (pkg.getName().toLowerCase().contains("đồng") || pkg.getName().toLowerCase().contains("silver") || pkg.getName().toLowerCase().contains("bạc")) {
-            tier = "SILVER";
-        } else if (pkg.getName().toLowerCase().contains("kim cương") || pkg.getName().toLowerCase().contains("diamond")) {
-            tier = "DIAMOND";
-        } else if (pkg.getName().toLowerCase().contains("vàng") || pkg.getName().toLowerCase().contains("gold")) {
-            tier = "GOLD";
+        String tier = pkg.getTier();
+        if (tier == null || tier.isBlank()) {
+            if (pkg.getName().toLowerCase().contains("đồng") || pkg.getName().toLowerCase().contains("silver")) {
+                tier = "SILVER";
+            } else if (pkg.getName().toLowerCase().contains("kim cương") || pkg.getName().toLowerCase().contains("diamond")) {
+                tier = "DIAMOND";
+            } else if (pkg.getName().toLowerCase().contains("mùa thi") || pkg.getName().toLowerCase().contains("exam")) {
+                tier = "EXAM_BOOST";
+            } else if (pkg.getName().toLowerCase().contains("học kỳ") || pkg.getName().toLowerCase().contains("semester")) {
+                tier = "SEMESTER_PASS";
+            } else {
+                tier = "GOLD";
+            }
         }
 
         user.setMembershipTier(tier);
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Đăng ký thành công " + pkg.getName() + "!",
                 "membershipTier", tier,
-                "package", pkg
+                "package", pkg,
+                "user", savedUser
         ));
     }
 }

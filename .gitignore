@@ -10,6 +10,12 @@ node_modules/
 dist/
 build/
 target/
+.gradle/
+.expo/
+*.apk
+debugOptimized/
+.cxx/
+local.properties
 
 # IDE / Editor files
 .vscode/

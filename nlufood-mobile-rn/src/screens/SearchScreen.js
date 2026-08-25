@@ -8,13 +8,13 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
-  ScrollView
+  ScrollView,
+  Platform
 } from 'react-native';
 import axios from 'axios';
-import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../config';
 
-export default function SearchScreen({ navigation, route }) {
+export default function SearchScreen({ navigation, route, cart = [] }) {
   const initialQuery = route.params?.initialQuery || '';
   const [query, setQuery] = useState(initialQuery);
   const [restaurants, setRestaurants] = useState([]);
@@ -24,6 +24,9 @@ export default function SearchScreen({ navigation, route }) {
 
   const [filterSort, setFilterSort] = useState('RECOMMENDED');
   const [filterCategory, setFilterCategory] = useState('ALL');
+
+  const cartCount = (cart || []).reduce((sum, item) => sum + item.quantity, 0);
+  const cartTotal = (cart || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   useEffect(() => {
     axios.get(`${API_BASE_URL}/restaurants`)
@@ -79,69 +82,52 @@ export default function SearchScreen({ navigation, route }) {
       {/* Header Search Input */}
       <View style={styles.searchHeader}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Text style={{ fontSize: 22, color: '#2A1608' }}>←</Text>
         </TouchableOpacity>
         <View style={styles.inputBox}>
-          <Ionicons name="search" size={18} color="#888" style={{ marginRight: 6 }} />
+          <Text style={{ fontSize: 16, marginRight: 6 }}>🔍</Text>
           <TextInput
             style={styles.input}
             placeholder="Tìm cơm, bún bò, trà sữa..."
+            placeholderTextColor="#A89A90"
             value={query}
             onChangeText={setQuery}
             autoFocus={!initialQuery}
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery('')}>
-              <Ionicons name="close-circle" size={18} color="#999" />
+              <Text style={{ fontSize: 16, color: '#999' }}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* FILTER BAR */}
+      {/* Filter Categories */}
       <View style={styles.filterSection}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-          {[
-            { id: 'RECOMMENDED', label: 'Được đề xuất 👍' },
-            { id: 'RATING', label: 'Đánh giá cao ⭐' },
-            { id: 'FREE_SHIP', label: 'Freeship 🛵' },
-            { id: 'FAST', label: 'Giao nhanh 15p ⏱️' },
-          ].map(f => (
-            <TouchableOpacity
-              key={f.id}
-              style={[styles.chip, filterSort === f.id && styles.chipActive]}
-              onPress={() => setFilterSort(f.id)}
-            >
-              <Text style={[styles.chipText, filterSort === f.id && styles.chipTextActive]}>{f.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {[
             { id: 'ALL', label: 'Tất cả' },
-            { id: 'Cơm', label: 'Cơm tấm 🍚' },
-            { id: 'Món nước', label: 'Bún / Phở 🍜' },
-            { id: 'Đồ uống', label: 'Trà Sữa 🧋' },
-            { id: 'Ăn vặt', label: 'Ăn vặt 🍰' }
-          ].map(c => (
+            { id: 'Cơm', label: '🍚 Cơm tấm' },
+            { id: 'Món nước', label: '🍜 Món nước' },
+            { id: 'Đồ uống', label: '🧋 Trà Sữa' },
+            { id: 'Ăn vặt', label: '🍟 Ăn vặt' }
+          ].map(cat => (
             <TouchableOpacity
-              key={c.id}
-              style={[styles.subChip, filterCategory === c.id && styles.subChipActive]}
-              onPress={() => setFilterCategory(c.id)}
+              key={cat.id}
+              style={[styles.chip, filterCategory === cat.id && styles.chipActive]}
+              onPress={() => setFilterCategory(cat.id)}
             >
-              <Text style={[styles.subChipText, filterCategory === c.id && styles.subChipTextActive]}>{c.label}</Text>
+              <Text style={[styles.chipText, filterCategory === cat.id && styles.chipTextActive]}>{cat.label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {/* RESULTS */}
       {loading ? (
-        <ActivityIndicator color="#FF6B00" style={{ marginTop: 40 }} />
+        <ActivityIndicator color="#BA3D0E" style={{ marginTop: 40 }} />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
-          {query.trim() !== '' ? (
+        <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
+          {query.trim() ? (
             <>
               {displayedRestaurants.length > 0 && (
                 <View style={{ marginBottom: 20 }}>
@@ -204,32 +190,80 @@ export default function SearchScreen({ navigation, route }) {
           )}
         </ScrollView>
       )}
+
+      {/* Floating Bottom Cart Bar (Item 2) */}
+      {cartCount > 0 && (
+        <TouchableOpacity
+          style={styles.floatingCartBar}
+          onPress={() => navigation.navigate('Cart')}
+          activeOpacity={0.9}
+        >
+          <View style={styles.floatingCartCountBox}>
+            <Text style={styles.floatingCartCountText}>{cartCount}</Text>
+          </View>
+          <Text style={styles.floatingCartTitle}>Xem giỏ hàng ({cartCount} món)</Text>
+          <Text style={styles.floatingCartPriceText}>{cartTotal.toLocaleString()}đ ➔</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
-  searchHeader: { flexDirection: 'row', alignItems: 'center', paddingTop: 50, paddingHorizontal: 16, paddingBottom: 12, backgroundColor: '#FFF', borderBottomWidth: 1, borderColor: '#EEE' },
-  backBtn: { marginRight: 12 },
-  inputBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F2F2F2', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14 },
-  input: { flex: 1, fontSize: 14, color: '#333' },
-  filterSection: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#FAFAFA', borderBottomWidth: 1, borderColor: '#EEE' },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD', marginRight: 8 },
-  chipActive: { backgroundColor: '#FF6B00', borderColor: '#FF6B00' },
-  chipText: { fontSize: 12, fontWeight: 'bold', color: '#555' },
+  container: { flex: 1, backgroundColor: '#FAF8F5' },
+  searchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'android' ? 44 : 54,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderColor: '#F0ECE8'
+  },
+  backBtn: { marginRight: 12, padding: 4 },
+  inputBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FDF9F6', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 16, borderWidth: 1, borderColor: '#F1E9E4' },
+  input: { flex: 1, fontSize: 14, color: '#2A1608' },
+  filterSection: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#FFF', borderBottomWidth: 1, borderColor: '#F0ECE8' },
+  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#FDF9F6', borderWidth: 1, borderColor: '#F1E9E4', marginRight: 8 },
+  chipActive: { backgroundColor: '#BA3D0E', borderColor: '#BA3D0E' },
+  chipText: { fontSize: 12, fontWeight: '700', color: '#7A6658' },
   chipTextActive: { color: '#FFF' },
-  subChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: '#EEE', marginRight: 6 },
-  subChipActive: { backgroundColor: '#333' },
-  subChipText: { fontSize: 11, fontWeight: '600', color: '#666' },
-  subChipTextActive: { color: '#FFF' },
-  sectionTitle: { fontSize: 15, fontWeight: 'bold', color: '#333', marginBottom: 12 },
-  card: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: '#EEE', alignItems: 'center' },
-  cardImg: { width: 70, height: 70, borderRadius: 12, backgroundColor: '#DDD' },
-  cardBody: { flex: 1, marginLeft: 12 },
-  cardTitle: { fontSize: 14, fontWeight: 'bold', color: '#222' },
-  cardSub: { fontSize: 12, color: '#777', marginTop: 2 },
-  cardStore: { fontSize: 10, fontWeight: 'bold', color: '#FF6B00', marginTop: 2 },
-  cardPrice: { fontSize: 14, fontWeight: 'bold', color: '#FF6B00', marginTop: 4 },
-  ratingText: { fontSize: 12, fontWeight: 'bold', color: '#FFB800', marginTop: 4 }
+  scrollBody: { padding: 16, paddingBottom: 130 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#2A1608', marginBottom: 12 },
+  card: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 20, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#F0ECE8', alignItems: 'center', elevation: 1 },
+  cardImg: { width: 72, height: 72, borderRadius: 16, backgroundColor: '#DDD' },
+  cardBody: { flex: 1, marginLeft: 14 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: '#2A1608' },
+  cardSub: { fontSize: 12, color: '#7A6658', marginTop: 2 },
+  cardStore: { fontSize: 11, fontWeight: '700', color: '#BA3D0E', marginTop: 2 },
+  cardPrice: { fontSize: 15, fontWeight: '800', color: '#BA3D0E', marginTop: 4 },
+  ratingText: { fontSize: 12, fontWeight: '700', color: '#4A3B32', marginTop: 4 },
+  floatingCartBar: {
+    position: 'absolute',
+    bottom: Platform.OS === 'android' ? 95 : 105,
+    left: 16,
+    right: 16,
+    backgroundColor: '#BA3D0E',
+    borderRadius: 22,
+    height: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    elevation: 8,
+    shadowColor: '#BA3D0E',
+    shadowOpacity: 0.35,
+    shadowRadius: 8
+  },
+  floatingCartCountBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  floatingCartCountText: { color: '#FFF', fontWeight: '900', fontSize: 14 },
+  floatingCartTitle: { flex: 1, color: '#FFF', fontSize: 15, fontWeight: '800', marginLeft: 12 },
+  floatingCartPriceText: { color: '#FFF', fontSize: 15, fontWeight: '900' }
 });

@@ -80,18 +80,19 @@ public class UserController {
         return userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
     }
     
-    @PutMapping("/{id}")
-    public User updateUserProfile(@PathVariable Long id, @RequestBody User updatedUser) {
+    @PutMapping(value = {"/{id}", "/{id}/profile"})
+    public ResponseEntity<?> updateUserProfile(@PathVariable Long id, @RequestBody User updatedUser) {
         return userRepository.findById(id).map(user -> {
-            if (updatedUser.getName() != null) user.setName(updatedUser.getName());
+            if (updatedUser.getName() != null && !updatedUser.getName().isEmpty()) user.setName(updatedUser.getName());
             if (updatedUser.getAddress() != null) user.setAddress(updatedUser.getAddress());
-            if (updatedUser.getImageUrl() != null) user.setImageUrl(updatedUser.getImageUrl());
+            if (updatedUser.getImageUrl() != null && !updatedUser.getImageUrl().isEmpty()) user.setImageUrl(updatedUser.getImageUrl());
             if (updatedUser.getPhoneNumber() != null) user.setPhoneNumber(updatedUser.getPhoneNumber());
             if (updatedUser.getBirthYear() != null) user.setBirthYear(updatedUser.getBirthYear());
             if (updatedUser.getGender() != null) user.setGender(updatedUser.getGender());
             if (updatedUser.getMembershipTier() != null) user.setMembershipTier(updatedUser.getMembershipTier());
-            return userRepository.save(user);
-        }).orElseThrow(() -> new RuntimeException("User not found"));
+            User saved = userRepository.save(user);
+            return ResponseEntity.ok(saved);
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}/membership")

@@ -6,14 +6,28 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  FlatList,
+  Image,
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Alert
 } from 'react-native';
 import axios from 'axios';
-import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../config';
+
+const QUICK_CHIPS = [
+  'Quán còn bán món này không ạ? 🍲',
+  'Khoảng bao lâu thì giao tới KTX ạ? ⏱️',
+  'Cho mình xin thêm tương ớt/nước mắm nhé! 🌶️',
+  'Cảm ơn quán nhiều ạ! ❤️'
+];
+
+const AI_QUICK_PROMPTS = [
+  'Hôm nay ăn gì ngon ở ĐH Nông Lâm? 🍱',
+  'Quán nào đang có Flash Sale 50%? 🔥',
+  'Làm sao để được Freeship 0đ? 🛵',
+  'Thời gian giao hàng đến KTX bao lâu? ⏱️'
+];
 
 export default function ChatScreen({ route, navigation, user }) {
   const initialRestaurant = route.params?.initialRestaurant || null;
@@ -22,54 +36,83 @@ export default function ChatScreen({ route, navigation, user }) {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [conversations, setConversations] = useState([]);
+  const [allRestaurants, setAllRestaurants] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
+  const [isAiMode, setIsAiMode] = useState(false);
 
   const scrollViewRef = useRef(null);
   const isOwner = user?.role === 'OWNER';
 
-  const activeRestaurantId = selectedConversation?.restaurantId || initialRestaurant?.id;
-  const activeRestaurantName = selectedConversation?.restaurantName || initialRestaurant?.name;
-  const activeStudentId = isOwner ? (selectedConversation?.studentId) : user?.id;
+  useEffect(() => {
+    fetchInitialData();
+  }, [user]);
 
   useEffect(() => {
     if (initialRestaurant) {
       setSelectedConversation({
         restaurantId: initialRestaurant.id,
         restaurantName: initialRestaurant.name,
+        restaurantImage: initialRestaurant.imageUrl,
         studentId: user?.id
       });
-    } else {
-      loadConversations();
+      setIsAiMode(false);
     }
   }, [initialRestaurant]);
 
-  const loadConversations = async () => {
+  const fetchInitialData = async () => {
     if (!user) return;
-    const url = isOwner
-      ? `${API_BASE_URL}/chat/conversations/owner/${user.id}`
-      : `${API_BASE_URL}/chat/conversations/student/${user.id}`;
-
     try {
-      const response = await axios.get(url);
-      setConversations(response.data || []);
+      // 1. Fetch Conversations
+      const url = isOwner
+        ? `${API_BASE_URL}/chat/conversations/owner/${user.id}`
+        : `${API_BASE_URL}/chat/conversations/student/${user.id}`;
+      
+      const convRes = await axios.get(url).catch(() => ({ data: [] }));
+      setConversations(convRes.data || []);
+
+      // 2. Fetch All Restaurants for student to start a chat easily
+      if (!isOwner) {
+        const resList = await axios.get(`${API_BASE_URL}/restaurants`).catch(() => ({ data: [] }));
+        setAllRestaurants(resList.data || []);
+      }
     } catch (e) {
       console.error(e);
     }
   };
 
   useEffect(() => {
-    if (!activeRestaurantId || !activeStudentId) return;
+    if (!selectedConversation) return;
 
+    if (selectedConversation.isAi) {
+      setIsAiMode(true);
+      if (messages.length === 0) {
+        setMessages([
+          {
+            id: 'ai_welcome',
+            senderRole: 'AI',
+            senderName: 'Trợ lý Ảo NLU Food 🤖',
+            content: `Xin chào ${user?.name || 'bạn'}! Mình là Trợ lý Ảo NLU Food 🤖.\n\nMình có thể giúp bạn tìm món ngon gần KTX Nông Lâm, thông tin khuyến mãi Flash Sale 50%, hoặc hỗ trợ kiểm tra gói VIP Freeship. Bạn cần hỗ trợ gì nè?`
+          }
+        ]);
+      }
+      return;
+    }
+
+    setIsAiMode(false);
     fetchMessages();
     const interval = setInterval(fetchMessages, 3000);
     return () => clearInterval(interval);
-  }, [activeRestaurantId, activeStudentId]);
+  }, [selectedConversation]);
 
   const fetchMessages = async () => {
-    if (!activeRestaurantId || !activeStudentId) return;
+    if (!selectedConversation || selectedConversation.isAi) return;
+    const rId = selectedConversation.restaurantId;
+    const sId = isOwner ? selectedConversation.studentId : user?.id;
+    if (!rId || !sId) return;
+
     try {
       const response = await axios.get(`${API_BASE_URL}/chat/messages`, {
-        params: { restaurantId: activeRestaurantId, studentId: activeStudentId }
+        params: { restaurantId: rId, studentId: sId }
       });
       setMessages(response.data || []);
     } catch (e) {
@@ -77,13 +120,73 @@ export default function ChatScreen({ route, navigation, user }) {
     }
   };
 
+  const handleOpenAiChat = () => {
+    setSelectedConversation({
+      isAi: true,
+      name: 'Trợ lý AI NLU FoodBot 🤖'
+    });
+  };
+
+  const handleOpenRestaurantChat = (restaurant) => {
+    setSelectedConversation({
+      restaurantId: restaurant.id,
+      restaurantName: restaurant.name,
+      restaurantImage: restaurant.imageUrl,
+      studentId: user?.id
+    });
+  };
+
   const handleSendMessage = async (textToSend) => {
     const content = textToSend || inputText;
-    if (!content.trim() || !activeRestaurantId || !activeStudentId) return;
+    if (!content.trim()) return;
+
+    if (isAiMode) {
+      // AI CHATBOT LOGIC
+      const userMsg = {
+        id: Date.now().toString(),
+        senderId: user?.id,
+        senderName: user?.name || 'Bạn',
+        senderRole: 'STUDENT',
+        content: content.trim()
+      };
+      setMessages(prev => [...prev, userMsg]);
+      setInputText('');
+      setLoading(true);
+
+      setTimeout(() => {
+        let aiReply = 'Cảm ơn bạn đã nhắn tin! Đội ngũ hỗ trợ NLUFood luôn sẵn sàng giúp bạn. Chúc bạn có bữa ăn thật ngon miệng nhé! 😋';
+        const lower = content.toLowerCase();
+
+        if (lower.includes('ăn gì') || lower.includes('món ngon') || lower.includes('gợi ý') || lower.includes('cơm') || lower.includes('bún')) {
+          aiReply = 'Gợi ý món hot hôm nay cho bạn tại ĐH Nông Lâm:\n1. 🍚 Cơm sườn bì chả đặc biệt (Cơm Tấm Cô Ba)\n2. 🍜 Bún Bò Huế Nông Lâm\n3. 🧋 Trà sữa trân châu đường đen (Gong Cha NLU)\n\nHiện tại các quán đang có Flash Sale giảm 50% cực hấp dẫn đó bạn! 🔥';
+        } else if (lower.includes('freeship') || lower.includes('vip') || lower.includes('gói')) {
+          aiReply = 'Bạn chỉ cần vào mục "Hồ sơ cá nhân" ➔ "Gói Hội Viên NLU VIP" để kích hoạt gói VIP. Khi đó toàn bộ đơn hàng giao đến KTX hoặc Giảng đường ĐH Nông Lâm đều được FREESHIP 0đ không giới hạn! 👑';
+        } else if (lower.includes('giao') || lower.includes('thời gian') || lower.includes('bao lâu') || lower.includes('ktx')) {
+          aiReply = 'Thời gian giao đồ ăn trong khuôn viên ĐH Nông Lâm & KTX trung bình chỉ từ 15 đến 25 phút. Bạn có thể theo dõi vị trí Shipper trực tiếp trong mục "Đơn hàng" nhé! 🛵';
+        } else if (lower.includes('khuyến mãi') || lower.includes('voucher') || lower.includes('mã')) {
+          aiReply = 'Bạn có thể nhập mã "NLUSTUDENT" hoặc "FREESHIP50" trong giỏ hàng để được giảm ngay 15.000đ - 50.000đ cho đơn hàng nhé! 🎁';
+        }
+
+        const aiMsg = {
+          id: (Date.now() + 1).toString(),
+          senderRole: 'AI',
+          senderName: 'Trợ lý Ảo NLU Food 🤖',
+          content: aiReply
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        setLoading(false);
+      }, 600);
+      return;
+    }
+
+    // RESTAURANT DIRECT CHAT LOGIC
+    const rId = selectedConversation?.restaurantId;
+    const sId = isOwner ? selectedConversation?.studentId : user?.id;
+    if (!rId || !sId) return;
 
     const payload = {
-      restaurantId: activeRestaurantId,
-      studentId: activeStudentId,
+      restaurantId: rId,
+      studentId: sId,
       senderId: user.id,
       senderName: user.name,
       senderRole: isOwner ? 'OWNER' : 'STUDENT',
@@ -98,18 +201,9 @@ export default function ChatScreen({ route, navigation, user }) {
       setLoading(false);
     } catch (e) {
       setLoading(false);
+      Alert.alert('Lỗi', 'Không thể gửi tin nhắn.');
     }
   };
-
-  const quickChips = isOwner ? [
-    "Dạ quán em đang làm món rồi ạ! 👨‍🍳",
-    "Đơn của bạn đang được giao rồi nhé! 🛵",
-    "Cảm ơn bạn đã ủng hộ quán! ❤️"
-  ] : [
-    "Quán còn bán món này không ạ? 🍲",
-    "Khoảng bao lâu thì giao tới ạ? 🛵",
-    "Cho em thêm nước tương/ớt nhé! 🥢"
-  ];
 
   return (
     <KeyboardAvoidingView
@@ -119,68 +213,142 @@ export default function ChatScreen({ route, navigation, user }) {
       {/* Header */}
       <View style={styles.header}>
         {selectedConversation && (
-          <TouchableOpacity style={styles.backBtn} onPress={() => setSelectedConversation(null)}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <TouchableOpacity style={styles.backBtn} onPress={() => { setSelectedConversation(null); fetchInitialData(); }}>
+            <Text style={{ fontSize: 22, color: '#FFF' }}>←</Text>
           </TouchableOpacity>
         )}
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>
-            {selectedConversation ? (isOwner ? selectedConversation.studentName : activeRestaurantName) : 'Hộp thư Tin nhắn'}
+            {selectedConversation
+              ? (selectedConversation.isAi
+                  ? 'Trợ lý AI NLU FoodBot 🤖'
+                  : (isOwner ? selectedConversation.studentName : selectedConversation.restaurantName))
+              : 'Tin nhắn & Trò chuyện'}
           </Text>
-          <Text style={styles.onlineStatus}>🟢 Trực tuyến</Text>
+          <Text style={styles.onlineStatus}>🟢 Trực tuyến 24/7</Text>
         </View>
       </View>
 
       {!selectedConversation ? (
-        /* Conversations List */
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
-          <Text style={styles.listSectionTitle}>
-            {isOwner ? 'Khách hàng gửi tin nhắn' : 'Hội thoại tin nhắn với các quán'}
-          </Text>
-          {conversations.length === 0 ? (
+        /* CONVERSATION & RESTAURANT DIRECTORY LIST */
+        <ScrollView contentContainerStyle={styles.directoryScroll} showsVerticalScrollIndicator={false}>
+          {/* AI ASSISTANT BANNER CARD */}
+          {!isOwner && (
+            <TouchableOpacity style={styles.aiBotCard} onPress={handleOpenAiChat} activeOpacity={0.85}>
+              <View style={styles.aiIconCircle}>
+                <Text style={{ fontSize: 26 }}>🤖</Text>
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.aiBotTitle}>Trợ lý Ảo NLU FoodBot</Text>
+                  <View style={styles.aiOfficialTag}>
+                    <Text style={styles.aiOfficialTagText}>AI 24/7</Text>
+                  </View>
+                </View>
+                <Text style={styles.aiBotSub} numberOfLines={2}>
+                  Tư vấn món ngon Nông Lâm, hướng dẫn freeship, kiểm tra voucher...
+                </Text>
+              </View>
+              <Text style={{ fontSize: 20, color: '#BA3D0E' }}>➔</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* ACTIVE CONVERSATIONS SECTION */}
+          {conversations.length > 0 && (
+            <View style={{ marginBottom: 20 }}>
+              <Text style={styles.listSectionTitle}>
+                {isOwner ? 'Khách hàng vừa nhắn tin' : 'Hội thoại gần đây'}
+              </Text>
+              {conversations.map((c, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.convCard}
+                  onPress={() => setSelectedConversation(c)}
+                >
+                  <View style={styles.avatarCircle}>
+                    <Text style={{ fontSize: 22 }}>{isOwner ? '👤' : '🏪'}</Text>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.convName}>{isOwner ? c.studentName : c.restaurantName}</Text>
+                    <Text style={styles.convLastMsg} numberOfLines={1}>
+                      {c.lastMessage || 'Bấm để tiếp tục trò chuyện...'}
+                    </Text>
+                  </View>
+                  {c.unreadCount > 0 && (
+                    <View style={styles.unreadBadge}>
+                      <Text style={styles.unreadBadgeText}>{c.unreadCount}</Text>
+                    </View>
+                  )}
+                  <Text style={{ fontSize: 16, color: '#A89A90', marginLeft: 8 }}>➔</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* RESTAURANTS DIRECTORY TO CHAT WITH (For Students) */}
+          {!isOwner && (
+            <View>
+              <Text style={styles.listSectionTitle}>Nhắn tin với các Quán ăn Nông Lâm</Text>
+              {allRestaurants.map(r => (
+                <TouchableOpacity
+                  key={r.id}
+                  style={styles.restaurantRowCard}
+                  onPress={() => handleOpenRestaurantChat(r)}
+                >
+                  <Image
+                    source={{ uri: r.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4' }}
+                    style={styles.restaurantRowImg}
+                  />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.restaurantRowName}>{r.name}</Text>
+                    <Text style={styles.restaurantRowAddr} numberOfLines={1}>📍 {r.address}</Text>
+                  </View>
+                  <View style={styles.chatActionBtn}>
+                    <Text style={styles.chatActionBtnText}>💬 Nhắn tin</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {isOwner && conversations.length === 0 && (
             <View style={styles.emptyBox}>
-              <Ionicons name="chatbubbles-outline" size={60} color="#CCC" />
-              <Text style={styles.emptyTitle}>Chưa có tin nhắn nào</Text>
+              <Text style={{ fontSize: 48, marginBottom: 12 }}>💬</Text>
+              <Text style={styles.emptyTitle}>Chưa có tin nhắn nào từ khách hàng</Text>
               <Text style={styles.emptySub}>
-                {isOwner ? 'Chưa có sinh viên nào gửi tin nhắn cho quán.' : 'Chọn một quán ăn và bấm "Tin nhắn" để bắt đầu trò chuyện!'}
+                Khi sinh viên đặt món hoặc gửi thắc mắc, tin nhắn sẽ hiển thị tại đây để bạn phản hồi ngay lập tức!
               </Text>
             </View>
-          ) : (
-            conversations.map((c, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={styles.convCard}
-                onPress={() => setSelectedConversation(c)}
-              >
-                <View style={styles.avatarCircle}>
-                  <Text style={styles.avatarText}>{isOwner ? '👤' : '🏪'}</Text>
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.convName}>{isOwner ? c.studentName : c.restaurantName}</Text>
-                  <Text style={styles.convLastMsg} numberOfLines={1}>{c.lastMessage || 'Bắt đầu tin nhắn...'}</Text>
-                </View>
-              </TouchableOpacity>
-            ))
           )}
         </ScrollView>
       ) : (
-        /* Messages Panel */
+        /* MESSAGES PANEL */
         <View style={{ flex: 1 }}>
           <ScrollView
             ref={scrollViewRef}
-            contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+            contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
             onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+            showsVerticalScrollIndicator={false}
           >
             {messages.length === 0 ? (
-              <Text style={styles.noMsgText}>Bắt đầu nhắn tin với {isOwner ? 'khách hàng' : 'quán ăn'}</Text>
+              <View style={styles.welcomeChatBox}>
+                <Text style={{ fontSize: 40, marginBottom: 8 }}>👋</Text>
+                <Text style={styles.welcomeChatTitle}>
+                  Bắt đầu trò chuyện với {selectedConversation.restaurantName || 'Quán ăn'}
+                </Text>
+                <Text style={styles.welcomeChatSub}>
+                  Bạn có thể gửi câu hỏi về món ăn, yêu cầu thêm gia vị hoặc ghi chú giao hàng.
+                </Text>
+              </View>
             ) : (
               messages.map((msg, idx) => {
-                const isMe = msg.senderId === user.id;
+                const isMe = msg.senderRole === 'STUDENT' && !msg.id?.toString().startsWith('ai_');
+                const isAi = msg.senderRole === 'AI';
                 return (
                   <View key={idx} style={[styles.msgRow, isMe ? styles.msgRight : styles.msgLeft]}>
-                    <Text style={styles.senderName}>{msg.senderName}</Text>
-                    <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
-                      <Text style={[styles.msgText, isMe && styles.msgTextMe]}>{msg.content}</Text>
+                    <Text style={styles.senderName}>{isAi ? '🤖 Trợ lý AI NLU' : (msg.senderName || (isMe ? 'Bạn' : 'Quán ăn'))}</Text>
+                    <View style={[styles.bubble, isMe ? styles.bubbleMe : isAi ? styles.bubbleAi : styles.bubbleOther]}>
+                      <Text style={[styles.msgText, isMe && styles.msgTextMe, isAi && styles.msgTextAi]}>{msg.content}</Text>
                     </View>
                   </View>
                 );
@@ -188,25 +356,36 @@ export default function ChatScreen({ route, navigation, user }) {
             )}
           </ScrollView>
 
-          {/* Quick Chips */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipBar}>
-            {quickChips.map((chip, idx) => (
-              <TouchableOpacity key={idx} style={styles.chipBtn} onPress={() => handleSendMessage(chip)}>
-                <Text style={styles.chipBtnText}>{chip}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {/* Quick Suggestion Chips */}
+          <View style={styles.chipBarWrapper}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12 }}>
+              {(isAiMode ? AI_QUICK_PROMPTS : QUICK_CHIPS).map((chip, idx) => (
+                <TouchableOpacity key={idx} style={styles.chipBtn} onPress={() => handleSendMessage(chip)}>
+                  <Text style={styles.chipBtnText}>{chip}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
 
           {/* Input Bar */}
           <View style={styles.inputBar}>
             <TextInput
               style={styles.input}
-              placeholder="Nhập tin nhắn..."
+              placeholder={isAiMode ? "Hỏi Trợ lý AI NLU FoodBot..." : "Nhập tin nhắn cho quán..."}
+              placeholderTextColor="#A89A90"
               value={inputText}
               onChangeText={setInputText}
             />
-            <TouchableOpacity style={styles.sendBtn} onPress={() => handleSendMessage()} disabled={loading || !inputText.trim()}>
-              <Ionicons name="send" size={18} color="#FFF" />
+            <TouchableOpacity
+              style={[styles.sendBtn, (!inputText.trim() && !loading) && styles.sendBtnDisabled]}
+              onPress={() => handleSendMessage()}
+              disabled={loading || !inputText.trim()}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <Text style={styles.sendBtnText}>Gửi ➤</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -216,34 +395,102 @@ export default function ChatScreen({ route, navigation, user }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingTop: 50, paddingHorizontal: 16, paddingBottom: 14, backgroundColor: '#FF6B00' },
-  backBtn: { marginRight: 12 },
-  headerTitle: { fontSize: 16, fontWeight: 'bold', color: '#FFF' },
-  onlineStatus: { fontSize: 11, color: '#FFF', opacity: 0.9 },
-  listSectionTitle: { fontSize: 13, fontWeight: 'bold', color: '#666', uppercase: 'uppercase', marginBottom: 12 },
+  container: { flex: 1, backgroundColor: '#FAF8F5' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'android' ? 44 : 54,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    backgroundColor: '#BA3D0E'
+  },
+  backBtn: { marginRight: 12, padding: 4 },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: '#FFF' },
+  onlineStatus: { fontSize: 11, color: '#FFF', opacity: 0.9, marginTop: 2 },
+  directoryScroll: { padding: 16, paddingBottom: 120 },
+  aiBotCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: '#BA3D0E',
+    elevation: 3,
+    shadowColor: '#BA3D0E',
+    shadowOpacity: 0.15,
+    shadowRadius: 8
+  },
+  aiIconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFEAE0', justifyContent: 'center', alignItems: 'center' },
+  aiBotTitle: { fontSize: 16, fontWeight: '800', color: '#2A1608' },
+  aiOfficialTag: { backgroundColor: '#BA3D0E', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  aiOfficialTagText: { color: '#FFF', fontSize: 9, fontWeight: '800' },
+  aiBotSub: { fontSize: 12, color: '#7A6658', marginTop: 4, lineHeight: 16 },
+  listSectionTitle: { fontSize: 12, fontWeight: '800', color: '#7A6658', textTransform: 'uppercase', marginBottom: 12, marginLeft: 4 },
+  convCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#F0ECE8',
+    elevation: 1
+  },
+  avatarCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFEAE0', justifyContent: 'center', alignItems: 'center' },
+  convName: { fontSize: 15, fontWeight: '800', color: '#2A1608' },
+  convLastMsg: { fontSize: 12, color: '#7A6658', marginTop: 2 },
+  unreadBadge: { backgroundColor: '#BA3D0E', width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  unreadBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+  restaurantRowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#F0ECE8',
+    elevation: 1
+  },
+  restaurantRowImg: { width: 52, height: 52, borderRadius: 16, backgroundColor: '#DDD' },
+  restaurantRowName: { fontSize: 14, fontWeight: '800', color: '#2A1608' },
+  restaurantRowAddr: { fontSize: 11, color: '#7A6658', marginTop: 2 },
+  chatActionBtn: { backgroundColor: '#FFEAE0', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12 },
+  chatActionBtnText: { color: '#BA3D0E', fontSize: 12, fontWeight: '800' },
   emptyBox: { alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
-  emptyTitle: { fontSize: 16, fontWeight: 'bold', color: '#444', marginTop: 10 },
-  emptySub: { fontSize: 12, color: '#888', textAlign: 'center', marginHorizontal: 30, marginTop: 4 },
-  convCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 14, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#EEE' },
-  avatarCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF0E6', justifyContent: 'center', alignItems: 'center' },
-  avatarText: { fontSize: 20 },
-  convName: { fontSize: 14, fontWeight: 'bold', color: '#222' },
-  convLastMsg: { fontSize: 12, color: '#777', marginTop: 2 },
-  noMsgText: { textAlign: 'center', color: '#999', marginTop: 40, fontSize: 13 },
-  msgRow: { marginBottom: 12 },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: '#2A1608', marginTop: 10 },
+  emptySub: { fontSize: 12, color: '#7A6658', textAlign: 'center', marginHorizontal: 30, marginTop: 4 },
+  welcomeChatBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, paddingHorizontal: 20 },
+  welcomeChatTitle: { fontSize: 16, fontWeight: '800', color: '#2A1608', textAlign: 'center' },
+  welcomeChatSub: { fontSize: 12, color: '#7A6658', textAlign: 'center', marginTop: 6, lineHeight: 18 },
+  msgRow: { marginBottom: 12, maxWidth: '82%' },
   msgLeft: { alignSelf: 'flex-start' },
   msgRight: { alignSelf: 'flex-end' },
-  senderName: { fontSize: 10, color: '#888', marginBottom: 2, paddingHorizontal: 4 },
-  bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18, maxWidth: '80%' },
-  bubbleMe: { backgroundColor: '#FF6B00', borderBottomRightRadius: 2 },
-  bubbleOther: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD', borderBottomLeftRadius: 2 },
-  msgText: { fontSize: 14, color: '#333' },
+  senderName: { fontSize: 11, fontWeight: '700', color: '#A89A90', marginBottom: 4, marginLeft: 4 },
+  bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
+  bubbleMe: { backgroundColor: '#BA3D0E', borderBottomRightRadius: 4 },
+  bubbleOther: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F0ECE8', borderBottomLeftRadius: 4 },
+  bubbleAi: { backgroundColor: '#FFF5F0', borderWidth: 1, borderColor: '#FFD6C6', borderBottomLeftRadius: 4 },
+  msgText: { fontSize: 14, color: '#2A1608', lineHeight: 20 },
   msgTextMe: { color: '#FFF' },
-  chipBar: { backgroundColor: '#FFF', paddingHorizontal: 10, paddingVertical: 6, borderTopWidth: 1, borderColor: '#EEE' },
-  chipBtn: { backgroundColor: '#FFF0E6', borderWidth: 1, borderColor: '#FF6B00', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8 },
-  chipBtnText: { fontSize: 11, color: '#FF6B00', fontWeight: 'bold' },
-  inputBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 10, borderTopWidth: 1, borderColor: '#EEE' },
-  input: { flex: 1, backgroundColor: '#F2F2F2', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: '#333' },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FF6B00', justifyContent: 'center', alignItems: 'center', marginLeft: 8 }
+  msgTextAi: { color: '#8A2B06', fontWeight: '500' },
+  chipBarWrapper: { maxHeight: 48, backgroundColor: '#FAF8F5', borderTopWidth: 1, borderColor: '#F0ECE8', paddingVertical: 8 },
+  chipBtn: { backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, marginRight: 8, borderWidth: 1, borderColor: '#F0ECE8' },
+  chipBtnText: { fontSize: 12, color: '#4A3B32', fontWeight: '600' },
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderColor: '#F0ECE8'
+  },
+  input: { flex: 1, backgroundColor: '#FDF9F6', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#2A1608', borderWidth: 1, borderColor: '#F1E9E4' },
+  sendBtn: { backgroundColor: '#BA3D0E', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16, marginLeft: 10 },
+  sendBtnDisabled: { opacity: 0.5 },
+  sendBtnText: { color: '#FFF', fontSize: 14, fontWeight: '800' }
 });

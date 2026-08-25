@@ -174,15 +174,16 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private void seedVipPackages() {
-        if (vipPackageRepository.count() == 0) {
+        if (vipPackageRepository.count() < 5) {
+            vipPackageRepository.deleteAll();
             vipPackageRepository.saveAll(List.of(
-                new VipPackage(null, "Gói NLU Đồng (Silver)", 29000.0, 30, 10, 5, "Miễn phí ship 5 đơn hàng/tháng, giảm 10% đồ uống", true),
-                new VipPackage(null, "Gói NLU Vàng (Gold)", 59000.0, 30, 20, 15, "Miễn phí ship 15 đơn hàng/tháng, giảm 20% toàn bộ thực đơn", true),
-                new VipPackage(null, "Gói NLU Kim Cương (Diamond Pro)", 99000.0, 30, 30, 999, "Freeship không giới hạn mọi đơn hàng NLU, giảm 30% món ăn", true),
-                new VipPackage(null, "Gói Mùa Thi Nông Lâm (Exam Boost)", 19000.0, 7, 15, 3, "Gói ngắn hạn 7 ngày ưu đãi mùa thi KTX", true),
-                new VipPackage(null, "Gói Học Kỳ NLU (Semester Pass)", 199000.0, 120, 25, 50, "Ưu đãi trọn gói 4 tháng học kỳ sinh viên", true)
+                new VipPackage(null, "Gói NLU Đồng (Silver)", "SILVER", 29000.0, 30, 10, 5, "Miễn phí ship 5 đơn hàng/tháng, giảm 10% đồ uống", true),
+                new VipPackage(null, "Gói NLU Vàng (Gold)", "GOLD", 59000.0, 30, 20, 15, "Miễn phí ship 15 đơn hàng/tháng, giảm 20% toàn bộ thực đơn", true),
+                new VipPackage(null, "Gói NLU Kim Cương (Diamond Pro)", "DIAMOND", 99000.0, 30, 30, 999, "Freeship không giới hạn mọi đơn hàng NLU, giảm 30% món ăn", true),
+                new VipPackage(null, "Gói Mùa Thi Nông Lâm (Exam Boost)", "EXAM_BOOST", 19000.0, 7, 15, 3, "Gói ngắn hạn 7 ngày ưu đãi mùa thi KTX", true),
+                new VipPackage(null, "Gói Học Kỳ NLU (Semester Pass)", "SEMESTER_PASS", 199000.0, 120, 25, 50, "Ưu đãi trọn gói 4 tháng học kỳ sinh viên", true)
             ));
-            System.out.println(">> Seeded 5 VIP Packages successfully.");
+            System.out.println(">> Seeded 5 distinct VIP Packages successfully.");
         }
     }
 

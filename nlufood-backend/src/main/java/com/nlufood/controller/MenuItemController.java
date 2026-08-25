@@ -33,6 +33,11 @@ public class MenuItemController {
         }).orElseThrow(() -> new RuntimeException("MenuItem not found"));
     }
 
+    @GetMapping("/restaurant/{restaurantId}")
+    public List<MenuItem> getMenuItemsByRestaurant(@PathVariable Long restaurantId) {
+        return menuItemRepository.findByRestaurantId(restaurantId);
+    }
+
     @DeleteMapping("/{id}")
     public void deleteMenuItem(@PathVariable Long id) {
         menuItemRepository.deleteById(id);

@@ -25,6 +25,11 @@ public class OrderController {
     public List<Order> getOrdersByStudent(@PathVariable Long studentId) {
         return orderRepository.findByStudentId(studentId);
     }
+
+    @GetMapping("/user/{userId}")
+    public List<Order> getOrdersByUser(@PathVariable Long userId) {
+        return orderRepository.findByStudentId(userId);
+    }
     
     @GetMapping("/restaurant/{restaurantId}")
     public List<Order> getOrdersByRestaurant(@PathVariable Long restaurantId) {

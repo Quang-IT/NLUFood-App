@@ -10,6 +10,7 @@ public class VipPackage {
     private Long id;
     
     private String name;
+    private String tier; // SILVER, GOLD, DIAMOND, EXAM_BOOST, SEMESTER_PASS
     private Double price;
     private Integer durationDays;
     private Integer discountPercent;
@@ -24,9 +25,10 @@ public class VipPackage {
         this.active = true;
     }
 
-    public VipPackage(Long id, String name, Double price, Integer durationDays, Integer discountPercent, Integer freeshipCount, String description, Boolean active) {
+    public VipPackage(Long id, String name, String tier, Double price, Integer durationDays, Integer discountPercent, Integer freeshipCount, String description, Boolean active) {
         this.id = id;
         this.name = name;
+        this.tier = tier;
         this.price = price;
         this.durationDays = durationDays;
         this.discountPercent = discountPercent;
@@ -39,6 +41,8 @@ public class VipPackage {
     public void setId(Long id) { this.id = id; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+    public String getTier() { return tier; }
+    public void setTier(String tier) { this.tier = tier; }
     public Double getPrice() { return price; }
     public void setPrice(Double price) { this.price = price; }
     public Integer getDurationDays() { return durationDays; }
