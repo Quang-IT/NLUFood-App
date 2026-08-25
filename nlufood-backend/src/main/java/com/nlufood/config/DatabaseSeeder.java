@@ -23,6 +23,9 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Autowired private OrderRepository orderRepository;
     @Autowired private VipPackageRepository vipPackageRepository;
     @Autowired private UserViolationRepository userViolationRepository;
+    @Autowired private FavoriteRepository favoriteRepository;
+    @Autowired private AddressRepository addressRepository;
+    @Autowired private SystemSettingRepository systemSettingRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -35,6 +38,9 @@ public class DatabaseSeeder implements CommandLineRunner {
         seedReviews();
         seedOrders();
         seedViolations();
+        seedAddresses();
+        seedFavorites();
+        seedSystemSettings();
     }
 
     private void seedUsers() {
@@ -234,15 +240,39 @@ public class DatabaseSeeder implements CommandLineRunner {
         }
     }
 
-    private void seedViolations() {
-        if (userViolationRepository.count() < 10) {
+    private void seedAddresses() {
+        if (addressRepository.count() == 0) {
             User student = userRepository.findByEmail("student@hcmuaf.edu.vn").orElse(null);
             if (student != null) {
-                userViolationRepository.save(new UserViolation(null, student, "Spam đặt 5 đơn ảo không lấy hàng tại Cơm Tấm Nông Lâm", "Chủ Quán Cơm Tấm", "PENDING"));
-                userViolationRepository.save(new UserViolation(null, student, "Dùng ngôn từ không chuẩn mực trong Chat với Chủ quán", "Chủ Quán Trà Sữa", "PENDING"));
-                userViolationRepository.save(new UserViolation(null, student, "Đăng tải đánh giá sai sự thật về chất lượng món ăn", "Chủ Quán Bún Bò", "RESOLVED"));
-                System.out.println(">> Seeded 3 User Violation reports successfully.");
+                addressRepository.save(new Address(null, "Ký Túc Xá A", "Phòng 302, KTX A, ĐH Nông Lâm TP.HCM, P. Linh Trung, TP. Thủ Đức", "Nguyễn Văn A", "0912345678", true, student));
+                addressRepository.save(new Address(null, "Ký Túc Xá B", "Phòng 510, KTX B, ĐH Nông Lâm TP.HCM, P. Linh Trung, TP. Thủ Đức", "Nguyễn Văn A", "0912345678", false, student));
+                addressRepository.save(new Address(null, "Giảng Đường K", "Cổng Giảng Đường K (Khoa CNTT), ĐH Nông Lâm TP.HCM", "Nguyễn Văn A", "0912345678", false, student));
+                addressRepository.save(new Address(null, "Viện Sinh Học", "Sảnh Cổng Viện Công Nghệ Sinh Học Nông Lâm", "Nguyễn Văn A", "0912345678", false, student));
+                System.out.println(">> Seeded 4 default Address entries successfully.");
             }
+        }
+    }
+
+    private void seedFavorites() {
+        if (favoriteRepository.count() == 0) {
+            User student = userRepository.findByEmail("student@hcmuaf.edu.vn").orElse(null);
+            List<Restaurant> restList = restaurantRepository.findAll();
+            if (student != null && !restList.isEmpty()) {
+                favoriteRepository.save(new Favorite(null, student, restList.get(0), null));
+                favoriteRepository.save(new Favorite(null, student, restList.get(1), null));
+                favoriteRepository.save(new Favorite(null, student, restList.get(2), null));
+                System.out.println(">> Seeded 3 default Favorite entries successfully.");
+            }
+        }
+    }
+
+    private void seedSystemSettings() {
+        if (systemSettingRepository.count() == 0) {
+            systemSettingRepository.save(new SystemSetting(null, "SHIPPING_FEE_PER_KM", "15000", "Phí giao hàng cố định mỗi kilomet (VNĐ)"));
+            systemSettingRepository.save(new SystemSetting(null, "RESTAURANT_COMMISSION_PERCENT", "10", "Tỷ lệ chiết khấu doanh thu quán ăn (%)"));
+            systemSettingRepository.save(new SystemSetting(null, "VIP_MEMBERSHIP_DISCOUNT_PERCENT", "20", "Mức giảm giá mặc định cho hội viên NLU VIP Gold (%)"));
+            systemSettingRepository.save(new SystemSetting(null, "FREE_SHIPPING_MIN_ORDER", "30000", "Giá trị đơn hàng tối thiểu để freeship (VNĐ)"));
+            System.out.println(">> Seeded 4 default SystemSettings entries successfully.");
         }
     }
 }
