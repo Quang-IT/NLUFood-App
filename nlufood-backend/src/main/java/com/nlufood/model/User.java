@@ -26,12 +26,14 @@ public class User {
     private Integer birthYear;
     private String gender; // Nam, Nữ, Khác
     private String membershipTier; // NORMAL, SILVER, GOLD, DIAMOND
+    private String status; // ACTIVE, BANNED
 
     public User() {
         this.membershipTier = "NORMAL";
+        this.status = "ACTIVE";
     }
 
-    public User(Long id, String name, String email, String password, String role, String imageUrl, String address, String phoneNumber, Integer birthYear, String gender, String membershipTier) {
+    public User(Long id, String name, String email, String password, String role, String imageUrl, String address, String phoneNumber, Integer birthYear, String gender, String membershipTier, String status) {
         this.id = id;
         this.name = name;
         this.email = email;
@@ -43,6 +45,7 @@ public class User {
         this.birthYear = birthYear;
         this.gender = gender;
         this.membershipTier = membershipTier != null ? membershipTier : "NORMAL";
+        this.status = status != null ? status : "ACTIVE";
     }
 
     public Long getId() { return id; }
@@ -67,4 +70,6 @@ public class User {
     public void setGender(String gender) { this.gender = gender; }
     public String getMembershipTier() { return membershipTier; }
     public void setMembershipTier(String membershipTier) { this.membershipTier = membershipTier; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }

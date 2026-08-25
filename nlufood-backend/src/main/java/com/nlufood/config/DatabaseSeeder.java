@@ -1,259 +1,247 @@
 package com.nlufood.config;
 
-import com.nlufood.model.PromoCode;
-import com.nlufood.model.Notification;
-import com.nlufood.model.User;
-import com.nlufood.model.Restaurant;
-import com.nlufood.model.MenuItem;
-import com.nlufood.model.SavedVoucher;
-import com.nlufood.model.Review;
-import com.nlufood.model.Order;
-import com.nlufood.model.OrderItem;
-import com.nlufood.repository.PromoCodeRepository;
-import com.nlufood.repository.NotificationRepository;
-import com.nlufood.repository.UserRepository;
-import com.nlufood.repository.RestaurantRepository;
-import com.nlufood.repository.MenuItemRepository;
-import com.nlufood.repository.SavedVoucherRepository;
-import com.nlufood.repository.ReviewRepository;
-import com.nlufood.repository.OrderRepository;
+import com.nlufood.model.*;
+import com.nlufood.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
 public class DatabaseSeeder implements CommandLineRunner {
 
-    @Autowired
-    private PromoCodeRepository promoCodeRepository;
-
-    @Autowired
-    private NotificationRepository notificationRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private RestaurantRepository restaurantRepository;
-
-    @Autowired
-    private MenuItemRepository menuItemRepository;
-
-    @Autowired
-    private SavedVoucherRepository savedVoucherRepository;
-
-    @Autowired
-    private ReviewRepository reviewRepository;
-
-    @Autowired
-    private OrderRepository orderRepository;
+    @Autowired private PromoCodeRepository promoCodeRepository;
+    @Autowired private NotificationRepository notificationRepository;
+    @Autowired private UserRepository userRepository;
+    @Autowired private RestaurantRepository restaurantRepository;
+    @Autowired private MenuItemRepository menuItemRepository;
+    @Autowired private SavedVoucherRepository savedVoucherRepository;
+    @Autowired private ReviewRepository reviewRepository;
+    @Autowired private OrderRepository orderRepository;
+    @Autowired private VipPackageRepository vipPackageRepository;
+    @Autowired private UserViolationRepository userViolationRepository;
 
     @Override
     public void run(String... args) throws Exception {
         seedUsers();
         seedPromoCodes();
         seedRestaurantsAndMenuItems();
+        seedVipPackages();
         seedNotifications();
         seedSavedVouchers();
         seedReviews();
         seedOrders();
+        seedViolations();
     }
 
     private void seedUsers() {
-        if (userRepository.findByEmail("student@hcmuaf.edu.vn").isEmpty()) {
-            User student = new User();
-            student.setName("Nguyễn Văn A (Sinh viên)");
-            student.setEmail("student@hcmuaf.edu.vn");
-            student.setPassword("123");
-            student.setRole("STUDENT");
-            student.setPhoneNumber("0912345678");
-            student.setAddress("Ký túc xá A, ĐH Nông Lâm");
-            student.setBirthYear(2003);
-            student.setGender("Nam");
-            student.setMembershipTier("GOLD");
-            userRepository.save(student);
+        if (userRepository.findByEmail("admin@hcmuaf.edu.vn").isEmpty()) {
+            User admin = new User(null, "Quản Trị Viên NLUFood (Admin)", "admin@hcmuaf.edu.vn", "123", "ADMIN", "https://images.unsplash.com/photo-1534528741775-53994a69daeb", "Phòng Công Nghệ Thông Tin - ĐH Nông Lâm", "0900000000", 1995, "Nam", "DIAMOND", "ACTIVE");
+            userRepository.save(admin);
         }
 
-        if (userRepository.findByEmail("student2@nlu.edu.vn").isEmpty()) {
-            User student2 = new User();
-            student2.setName("Lê Thị B (Sinh viên)");
-            student2.setEmail("student2@nlu.edu.vn");
-            student2.setPassword("123");
-            student2.setRole("STUDENT");
-            student2.setPhoneNumber("0911223344");
-            student2.setAddress("Ký túc xá B, ĐH Nông Lâm");
-            student2.setBirthYear(2004);
-            student2.setGender("Nữ");
-            student2.setMembershipTier("SILVER");
-            userRepository.save(student2);
+        String[] ownerEmails = {"owner@hcmuaf.edu.vn", "trasua@nlu.edu.vn", "bunbo@nlu.edu.vn", "garan@nlu.edu.vn"};
+        String[] ownerNames = {"Chủ Quán Cơm Tấm Nông Lâm", "Chủ Quán Trà Sữa Cổng NLU", "Chủ Quán Bún Bò KTX A", "Chủ Quán Gà Rán KTX B"};
+        for (int i = 0; i < ownerEmails.length; i++) {
+            if (userRepository.findByEmail(ownerEmails[i]).isEmpty()) {
+                User owner = new User(null, ownerNames[i], ownerEmails[i], "123", "OWNER", "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d", "Linh Trung, Thủ Đức", "098765432" + i, 1985 + i, "Nam", "NORMAL", "ACTIVE");
+                userRepository.save(owner);
+            }
         }
 
-        if (userRepository.findByEmail("nam.nguyen@nlu.edu.vn").isEmpty()) {
-            User student3 = new User();
-            student3.setName("Trần Hoàng Nam");
-            student3.setEmail("nam.nguyen@nlu.edu.vn");
-            student3.setPassword("123");
-            student3.setRole("STUDENT");
-            student3.setPhoneNumber("0933445566");
-            student3.setAddress("Giảng đường K, ĐH Nông Lâm");
-            student3.setBirthYear(2002);
-            student3.setGender("Nam");
-            student3.setMembershipTier("DIAMOND");
-            userRepository.save(student3);
-        }
+        String[] studentNames = {
+            "Nguyễn Văn A (Sinh viên)", "Lê Thị B (Sinh viên)", "Trần Hoàng Nam", "Phạm Minh Tuấn",
+            "Đặng Thu Thảo", "Vũ Hoàng Long", "Ngô Bích Phương", "Bùi Anh Tuấn",
+            "Đỗ Thị Mai", "Hoàng Văn Thái", "Lý Thanh Hà", "Dương Minh Trí",
+            "Nguyễn Thị Hương", "Trịnh Quốc Bảo", "Hồ Phương Thảo", "Phan Gia Huy"
+        };
+        String[] tiers = {"NORMAL", "SILVER", "GOLD", "DIAMOND"};
 
-        if (userRepository.findByEmail("owner@hcmuaf.edu.vn").isEmpty()) {
-            User owner = new User();
-            owner.setName("Chủ Quán Cơm Tấm Nông Lâm");
-            owner.setEmail("owner@hcmuaf.edu.vn");
-            owner.setPassword("123");
-            owner.setRole("OWNER");
-            owner.setPhoneNumber("0987654321");
-            owner.setAddress("Khu phố 6, Linh Trung, Thủ Đức");
-            userRepository.save(owner);
+        for (int i = 0; i < studentNames.length; i++) {
+            String email = (i == 0) ? "student@hcmuaf.edu.vn" : ((i == 1) ? "student2@nlu.edu.vn" : "student" + (i + 1) + "@nlu.edu.vn");
+            if (userRepository.findByEmail(email).isEmpty()) {
+                String gender = (i % 2 == 0) ? "Nam" : "Nữ";
+                String address = (i % 2 == 0) ? "KTX A, ĐH Nông Lâm" : "KTX B, ĐH Nông Lâm";
+                User student = new User(null, studentNames[i], email, "123", "STUDENT", "https://images.unsplash.com/photo-1494790108377-be9c29b29330", address, "09123456" + (i < 10 ? "0" + i : i), 2002 + (i % 3), gender, tiers[i % 4], (i == 15 ? "BANNED" : "ACTIVE"));
+                userRepository.save(student);
+            }
         }
-
-        if (userRepository.findByEmail("trasua@nlu.edu.vn").isEmpty()) {
-            User owner2 = new User();
-            owner2.setName("Chủ Quán Trà Sữa Nông Lâm");
-            owner2.setEmail("trasua@nlu.edu.vn");
-            owner2.setPassword("123");
-            owner2.setRole("OWNER");
-            owner2.setPhoneNumber("0977889900");
-            owner2.setAddress("Đường số 8, Linh Trung, Thủ Đức");
-            userRepository.save(owner2);
-        }
-        System.out.println(">> Seeded rich user accounts successfully.");
+        System.out.println(">> Seeded User accounts successfully.");
     }
 
     private void seedPromoCodes() {
-        if (promoCodeRepository.count() == 0) {
-            promoCodeRepository.saveAll(List.of(
-                new PromoCode("NLUSTUDENT", "Mã giảm giá 20,000đ dành riêng cho sinh viên Nông Lâm", "FLAT", 20000, 50000, 0, LocalDateTime.now().plusDays(30)),
-                new PromoCode("FOOD50", "Giảm giá 50% tối đa 30,000đ cho mọi đơn hàng", "PERCENTAGE", 50, 60000, 30000, LocalDateTime.now().plusDays(15)),
-                new PromoCode("FREESHIP", "Miễn phí vận chuyển 15,000đ cho đơn hàng từ 30,000đ", "FLAT", 15000, 30000, 0, LocalDateTime.now().plusDays(45)),
-                new PromoCode("VOUCHER10K", "Giảm ngay 10,000đ không yêu cầu giá trị tối thiểu", "FLAT", 10000, 0, 0, LocalDateTime.now().plusDays(10)),
-                new PromoCode("NLUVIPPRO", "Đặc quyền NLU VIP Pro giảm 35,000đ đơn từ 70,000đ", "FLAT", 35000, 70000, 0, LocalDateTime.now().plusDays(60))
-            ));
-            System.out.println(">> Seeded 5 PromoCodes successfully.");
-        }
-    }
+        List<PromoCode> promos = List.of(
+            new PromoCode("NLUSTUDENT", "Giảm ngay 20,000đ cho sinh viên NLU", "FLAT", 20000, 50000, 0, LocalDateTime.now().plusDays(30)),
+            new PromoCode("FOOD50", "Giảm 50% tối đa 30,000đ", "PERCENTAGE", 50, 60000, 30000, LocalDateTime.now().plusDays(15)),
+            new PromoCode("FREESHIP", "Miễn phí vận chuyển 15,000đ", "FLAT", 15000, 30000, 0, LocalDateTime.now().plusDays(45)),
+            new PromoCode("VOUCHER10K", "Giảm ngay 10,000đ mọi đơn", "FLAT", 10000, 0, 0, LocalDateTime.now().plusDays(10)),
+            new PromoCode("NLUVIPPRO", "Đặc quyền NLU VIP Pro giảm 35k", "FLAT", 35000, 70000, 0, LocalDateTime.now().plusDays(60)),
+            new PromoCode("LUNCH20", "Ưu đãi ăn trưa KTX giảm 20%", "PERCENTAGE", 20, 40000, 20000, LocalDateTime.now().plusDays(20)),
+            new PromoCode("NIGHT30", "Ăn đêm KTX B giảm 30k", "FLAT", 30000, 80000, 0, LocalDateTime.now().plusDays(25)),
+            new PromoCode("MILKTEA15", "Giảm 15k cho Trà sữa NLU", "FLAT", 15000, 35000, 0, LocalDateTime.now().plusDays(30)),
+            new PromoCode("FREESHIPVIP", "Freeship thần tốc 20k", "FLAT", 20000, 40000, 0, LocalDateTime.now().plusDays(50)),
+            new PromoCode("BIGDEAL50", "Giảm 50k đơn từ 150k", "FLAT", 50000, 150000, 0, LocalDateTime.now().plusDays(15)),
+            new PromoCode("DEAL1K", "Đồng giá 1k món thứ 2", "FLAT", 15000, 30000, 0, LocalDateTime.now().plusDays(5)),
+            new PromoCode("TUESDAY30", "Thứ ba vui vẻ giảm 30%", "PERCENTAGE", 30, 50000, 25000, LocalDateTime.now().plusDays(12)),
+            new PromoCode("COMBOFOOD", "Giảm 25k khi mua Combo", "FLAT", 25000, 60000, 0, LocalDateTime.now().plusDays(18)),
+            new PromoCode("NLUFRIENDS", "Đi nhóm 4 người giảm 40k", "FLAT", 40000, 100000, 0, LocalDateTime.now().plusDays(40)),
+            new PromoCode("SNACK10", "Giảm 10k đồ ăn vặt", "FLAT", 10000, 25000, 0, LocalDateTime.now().plusDays(30)),
+            new PromoCode("EXAMBOOST", "Tăng lực mùa thi giảm 15%", "PERCENTAGE", 15, 30000, 15000, LocalDateTime.now().plusDays(22)),
+            new PromoCode("WEEKEND25", "Cuối tuần xả hơi giảm 25k", "FLAT", 25000, 55000, 0, LocalDateTime.now().plusDays(14)),
+            new PromoCode("PAYMOMO", "Thanh toán MoMo giảm 15%", "PERCENTAGE", 15, 50000, 20000, LocalDateTime.now().plusDays(30)),
+            new PromoCode("ZALOPAY10", "ZaloPay giảm 10k", "FLAT", 10000, 30000, 0, LocalDateTime.now().plusDays(30)),
+            new PromoCode("SUPERVIP100", "Siêu VIP giảm 100k đơn từ 300k", "FLAT", 100000, 300000, 0, LocalDateTime.now().plusDays(90))
+        );
 
-    private void seedSavedVouchers() {
-        userRepository.findByEmail("student@hcmuaf.edu.vn").ifPresent(student -> {
-            if (savedVoucherRepository.findByUserId(student.getId()).isEmpty()) {
-                promoCodeRepository.findByCodeIgnoreCase("NLUSTUDENT").ifPresent(p1 -> savedVoucherRepository.save(new SavedVoucher(student, p1)));
-                promoCodeRepository.findByCodeIgnoreCase("FREESHIP").ifPresent(p2 -> savedVoucherRepository.save(new SavedVoucher(student, p2)));
-                promoCodeRepository.findByCodeIgnoreCase("FOOD50").ifPresent(p3 -> savedVoucherRepository.save(new SavedVoucher(student, p3)));
-                System.out.println(">> Seeded saved vouchers for student.");
+        for (PromoCode p : promos) {
+            if (promoCodeRepository.findByCodeIgnoreCase(p.getCode()).isEmpty()) {
+                promoCodeRepository.save(p);
             }
-        });
+        }
+        System.out.println(">> Seeded PromoCodes safely.");
     }
 
     private void seedRestaurantsAndMenuItems() {
-        if (restaurantRepository.count() == 0) {
+        if (restaurantRepository.count() < 20) {
             User owner1 = userRepository.findByEmail("owner@hcmuaf.edu.vn").orElse(null);
             User owner2 = userRepository.findByEmail("trasua@nlu.edu.vn").orElse(null);
 
-            Restaurant r1 = new Restaurant(null, "Cơm Tấm Nông Lâm 🥩", "Khu phố 6, P. Linh Trung, TP. Thủ Đức", 4.8, "https://images.unsplash.com/photo-1546069901-ba9599a7e63c", owner1);
-            Restaurant r2 = new Restaurant(null, "Bún Bò Huế & Phở Sinh Viên 🍜", "Cổng Phụ KTX A Nông Lâm", 4.7, "https://images.unsplash.com/photo-1569718212165-3a8278d5f624", owner1);
-            Restaurant r3 = new Restaurant(null, "Trà Sữa Cổng Trường NLU 🧋", "Đường số 8, KTX B Nông Lâm", 4.9, "https://images.unsplash.com/photo-1551024709-8f23befc6f87", owner2);
-            Restaurant r4 = new Restaurant(null, "Gà Rán & Bánh Mì KTX A 🍔", "Cổng chính KTX A Nông Lâm", 4.6, "https://images.unsplash.com/photo-1568901346375-23c9450c58cd", owner2);
-            Restaurant r5 = new Restaurant(null, "Chè Thái & Ăn Vặt Nông Lâm 🍧", "Đường Z1, KTX B Nông Lâm", 4.8, "https://images.unsplash.com/photo-1541599540903-216a46ca1dc0", owner2);
+            String[] names = {
+                "Cơm Tấm Nông Lâm 🥩", "Bún Bò Huế & Phở Sinh Viên 🍜", "Trà Sữa Cổng Trường NLU 🧋",
+                "Gà Rán & Bánh Mì KTX A 🍔", "Chè Thái & Ăn Vặt Nông Lâm 🍧", "Bún Đậu Mắm Tôm KTX B 🍢",
+                "Cơm Gà Xối Mỡ Linh Trung 🍗", "Cà Phê Muối Nông Lâm ☕", "Hủ Tiếu Nam Vang Cô Ba 🍜",
+                "Mì Cay 7 Cấp Độ NLU 🌶️", "Bánh Xèo Miền Tây KTX A 🥞", "Bánh Cuốn Tráng Tay Nông Lâm 🍥",
+                "Sinh Tố & Trái Cây Dầm 🍓", "Bún Thịt Nướng Bà Bảy 🥗", "Cơm Bình Dân Sinh Viên 🍛",
+                "Quán Ăn Vặt Hàn Quốc KPOP 🍡", "Bánh Mì Kebab Thổ Nhĩ Kỳ 🥙", "Cháo Lòng & Bún Mắm NLU 🥘",
+                "Quán Lẩu Cốc Sinh Viên 🍲", "Nước Đậu Đậu Lạc Hồng 🥛"
+            };
 
-            restaurantRepository.saveAll(List.of(r1, r2, r3, r4, r5));
+            String[] statuses = {"APPROVED", "APPROVED", "APPROVED", "APPROVED", "APPROVED", "APPROVED", "APPROVED", "APPROVED", "APPROVED", "APPROVED", "APPROVED", "APPROVED", "APPROVED", "APPROVED", "APPROVED", "PENDING", "PENDING", "PENDING", "REJECTED", "APPROVED"};
+
+            for (int i = 0; i < names.length; i++) {
+                String img = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c";
+                if (i % 4 == 1) img = "https://images.unsplash.com/photo-1569718212165-3a8278d5f624";
+                if (i % 4 == 2) img = "https://images.unsplash.com/photo-1551024709-8f23befc6f87";
+                if (i % 4 == 3) img = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd";
+                restaurantRepository.save(new Restaurant(null, names[i], "Linh Trung, TP. Thủ Đức", 4.5 + (i % 5) * 0.1, img, statuses[i], (i % 2 == 0 ? owner1 : owner2)));
+            }
+
+            // Seed MenuItems
+            Restaurant r1 = restaurantRepository.findAll().get(0);
+            Restaurant r2 = restaurantRepository.findAll().get(1);
+            Restaurant r3 = restaurantRepository.findAll().get(2);
 
             menuItemRepository.saveAll(List.of(
-                // Cơm Tấm Nông Lâm
                 new MenuItem(null, "Cơm sườn bì chả nướng đặc biệt", 35000.0, 40000.0, "https://images.unsplash.com/photo-1546069901-ba9599a7e63c", "Cơm", true, r1),
                 new MenuItem(null, "Cơm gà chiên mắm tỏi thơm lừng", 38000.0, 42000.0, "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b", "Cơm", true, r1),
                 new MenuItem(null, "Cơm sườn nướng mỡ hành", 32000.0, 36000.0, "https://images.unsplash.com/photo-1546069901-ba9599a7e63c", "Cơm", true, r1),
                 new MenuItem(null, "Canh khổ qua dồn thịt", 12000.0, 15000.0, "https://images.unsplash.com/photo-1547592180-85f173990554", "Cơm", true, r1),
-
-                // Bún Bò Huế
                 new MenuItem(null, "Bún bò Huế giò heo đặc biệt", 40000.0, 45000.0, "https://images.unsplash.com/photo-1569718212165-3a8278d5f624", "Món nước", true, r2),
                 new MenuItem(null, "Phở bò tái nạm bò viên", 42000.0, 48000.0, "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43", "Món nước", true, r2),
                 new MenuItem(null, "Hủ tiếu Nam Vang tôm mực", 38000.0, 42000.0, "https://images.unsplash.com/photo-1569718212165-3a8278d5f624", "Món nước", true, r2),
-
-                // Trà Sữa
                 new MenuItem(null, "Trà sữa trân châu đường đen NLU", 25000.0, 30000.0, "https://images.unsplash.com/photo-1551024709-8f23befc6f87", "Đồ uống", true, r3),
                 new MenuItem(null, "Trà đào cam sả thanh nhiệt", 22000.0, 25000.0, "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd", "Đồ uống", true, r3),
                 new MenuItem(null, "Trà tắc xí muội giải khát", 18000.0, 20000.0, "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd", "Đồ uống", true, r3),
-                new MenuItem(null, "Sữa tươi trân châu đường đen", 28000.0, 32000.0, "https://images.unsplash.com/photo-1551024709-8f23befc6f87", "Đồ uống", true, r3),
-
-                // Gà Rán & Bánh Mì
-                new MenuItem(null, "Combo Gà Rán sốt cay Hàn Quốc", 45000.0, 50000.0, "https://images.unsplash.com/photo-1568901346375-23c9450c58cd", "Ăn vặt", true, r4),
-                new MenuItem(null, "Bánh mì ốp la xíu mại giòn rụm", 20000.0, 22000.0, "https://images.unsplash.com/photo-1509722747041-616f39b57569", "Ăn vặt", true, r4),
-                new MenuItem(null, "Khoai tây chiên lắc phô mai", 20000.0, 25000.0, "https://images.unsplash.com/photo-1541599540903-216a46ca1dc0", "Ăn vặt", true, r4),
-
-                // Chè Thái & Ăn Vặt
-                new MenuItem(null, "Chè Thái sầu riêng sương sáo", 25000.0, 30000.0, "https://images.unsplash.com/photo-1541599540903-216a46ca1dc0", "Ăn vặt", true, r5),
-                new MenuItem(null, "Bánh rán Doraemon lắc phô mai", 18000.0, 20000.0, "https://images.unsplash.com/photo-1541599540903-216a46ca1dc0", "Ăn vặt", true, r5),
-                new MenuItem(null, "Bún đậu mắm tôm thập cẩm", 45000.0, 50000.0, "https://images.unsplash.com/photo-1546069901-ba9599a7e63c", "Món nước", true, r5)
+                new MenuItem(null, "Sữa tươi trân châu đường đen", 28000.0, 32000.0, "https://images.unsplash.com/photo-1551024709-8f23befc6f87", "Đồ uống", true, r3)
             ));
+            System.out.println(">> Seeded 20 Restaurants successfully.");
+        }
+    }
 
-            System.out.println(">> Seeded 5 Restaurants and 17 MenuItems successfully.");
+    private void seedVipPackages() {
+        if (vipPackageRepository.count() == 0) {
+            vipPackageRepository.saveAll(List.of(
+                new VipPackage(null, "Gói NLU Đồng (Silver)", 29000.0, 30, 10, 5, "Miễn phí ship 5 đơn hàng/tháng, giảm 10% đồ uống", true),
+                new VipPackage(null, "Gói NLU Vàng (Gold)", 59000.0, 30, 20, 15, "Miễn phí ship 15 đơn hàng/tháng, giảm 20% toàn bộ thực đơn", true),
+                new VipPackage(null, "Gói NLU Kim Cương (Diamond Pro)", 99000.0, 30, 30, 999, "Freeship không giới hạn mọi đơn hàng NLU, giảm 30% món ăn", true),
+                new VipPackage(null, "Gói Mùa Thi Nông Lâm (Exam Boost)", 19000.0, 7, 15, 3, "Gói ngắn hạn 7 ngày ưu đãi mùa thi KTX", true),
+                new VipPackage(null, "Gói Học Kỳ NLU (Semester Pass)", 199000.0, 120, 25, 50, "Ưu đãi trọn gói 4 tháng học kỳ sinh viên", true)
+            ));
+            System.out.println(">> Seeded 5 VIP Packages successfully.");
         }
     }
 
     private void seedNotifications() {
         userRepository.findByEmail("student@hcmuaf.edu.vn").ifPresent(student -> {
             Long studentId = student.getId();
-            if (notificationRepository.findByUserIdOrderByCreatedTimeDesc(studentId).isEmpty()) {
-                notificationRepository.save(new Notification(studentId, "Chào mừng đến với NLUFood! 🎉", "Chúc mừng bạn đã gia nhập NLUFood - Ứng dụng đặt đồ ăn nhanh chóng, tiện lợi nhất dành cho sinh viên Nông Lâm!"));
-                notificationRepository.save(new Notification(studentId, "Khuyến mãi chào bạn mới! 🎁", "Nhập ngay mã 'NLUSTUDENT' khi thanh toán để giảm 20,000đ cho đơn hàng từ 50,000đ nhé!"));
-                notificationRepository.save(new Notification(studentId, "Đơn hàng của bạn đã hoàn thành 🛵", "Đơn hàng #101 tại 'Cơm Tấm Nông Lâm' đã giao thành công. Chúc bạn ngon miệng!"));
+            if (notificationRepository.findByUserIdOrderByCreatedTimeDesc(studentId).size() < 20) {
+                List<Notification> notifs = new ArrayList<>();
+                for (int i = 1; i <= 20; i++) {
+                    notifs.add(new Notification(studentId, "Thông báo ưu đãi #" + i + " 🎉", "NLUFood cập nhật ưu đãi món ăn mới cho sinh viên KTX! Nhập mã 'NLUSTUDENT' để nhận ưu đãi giảm 20k ngay hôm nay."));
+                }
+                notificationRepository.saveAll(notifs);
+                System.out.println(">> Seeded 20 Notifications successfully.");
+            }
+        });
+    }
+
+    private void seedSavedVouchers() {
+        userRepository.findByEmail("student@hcmuaf.edu.vn").ifPresent(student -> {
+            if (savedVoucherRepository.findByUserId(student.getId()).size() < 10) {
+                promoCodeRepository.findAll().stream().limit(10).forEach(p -> {
+                    savedVoucherRepository.save(new SavedVoucher(student, p));
+                });
+                System.out.println(">> Seeded saved vouchers for student.");
             }
         });
     }
 
     private void seedReviews() {
-        if (reviewRepository.count() == 0) {
+        if (reviewRepository.count() < 20) {
             User student = userRepository.findByEmail("student@hcmuaf.edu.vn").orElse(null);
-            restaurantRepository.findAll().forEach(r -> {
-                reviewRepository.save(new Review(null, "Món ăn rất ngon, giao hàng siêu nhanh chỉ trong 15 phút KTX A!", 5, student, r));
-                reviewRepository.save(new Review(null, "Đồ ăn nêm nếm vừa vị sinh viên, giá hợp lý!", 4, student, r));
-            });
+            List<Restaurant> restList = restaurantRepository.findAll();
+            if (student != null && !restList.isEmpty()) {
+                List<Review> revs = new ArrayList<>();
+                for (int i = 0; i < 20; i++) {
+                    Restaurant r = restList.get(i % restList.size());
+                    revs.add(new Review(null, "Món ăn ngon hợp vị sinh viên #" + (i + 1) + ", giao cực nhanh KTX!", 4 + (i % 2), student, r));
+                }
+                reviewRepository.saveAll(revs);
+                System.out.println(">> Seeded 20 Reviews successfully.");
+            }
         }
     }
 
     private void seedOrders() {
-        if (orderRepository.count() == 0) {
+        if (orderRepository.count() < 20) {
             User student = userRepository.findByEmail("student@hcmuaf.edu.vn").orElse(null);
             Restaurant r1 = restaurantRepository.findAll().get(0);
-            Restaurant r2 = restaurantRepository.findAll().get(2);
 
             if (student != null && r1 != null) {
-                // Completed Order
-                Order o1 = new Order();
-                o1.setStudent(student);
-                o1.setRestaurant(r1);
-                o1.setStatus("COMPLETED");
-                o1.setTotalPrice(70000.0);
-                o1.setOrderTime(LocalDateTime.now().minusDays(1));
-                o1.setPaymentMethod("Ví MoMo");
-                o1.setDriverName("Nguyễn Văn Hùng (Shipper NLU)");
-                o1.setDriverPhone("0988 123 456");
-                o1.setDriverLicensePlate("59-X1 678.90");
-                orderRepository.save(o1);
+                String[] statuses = {"COMPLETED", "DELIVERING", "PREPARING", "CANCELLED"};
+                String[] payments = {"Ví MoMo", "Tiền mặt", "ZaloPay", "Thẻ ATM"};
 
-                // Delivering Order
-                Order o2 = new Order();
-                o2.setStudent(student);
-                o2.setRestaurant(r2);
-                o2.setStatus("DELIVERING");
-                o2.setTotalPrice(47000.0);
-                o2.setOrderTime(LocalDateTime.now().minusMinutes(20));
-                o2.setPaymentMethod("Tiền mặt");
-                o2.setDriverName("Nguyễn Văn Hùng (Shipper NLU)");
-                o2.setDriverPhone("0988 123 456");
-                o2.setDriverLicensePlate("59-X1 678.90");
-                orderRepository.save(o2);
+                List<Order> orders = new ArrayList<>();
+                for (int i = 1; i <= 20; i++) {
+                    Order o = new Order();
+                    o.setStudent(student);
+                    o.setRestaurant(r1);
+                    o.setStatus(statuses[i % 4]);
+                    o.setTotalPrice(35000.0 + (i * 5000.0));
+                    o.setOrderTime(LocalDateTime.now().minusHours(i * 2));
+                    o.setPaymentMethod(payments[i % 4]);
+                    o.setDriverName("Nguyễn Văn Hùng (Shipper NLU)");
+                    o.setDriverPhone("0988 123 456");
+                    o.setDriverLicensePlate("59-X1 678.90");
+                    orders.add(o);
+                }
+                orderRepository.saveAll(orders);
+                System.out.println(">> Seeded 20 Orders with driver details successfully.");
+            }
+        }
+    }
 
-                System.out.println(">> Seeded sample orders with driver details successfully.");
+    private void seedViolations() {
+        if (userViolationRepository.count() < 10) {
+            User student = userRepository.findByEmail("student@hcmuaf.edu.vn").orElse(null);
+            if (student != null) {
+                userViolationRepository.save(new UserViolation(null, student, "Spam đặt 5 đơn ảo không lấy hàng tại Cơm Tấm Nông Lâm", "Chủ Quán Cơm Tấm", "PENDING"));
+                userViolationRepository.save(new UserViolation(null, student, "Dùng ngôn từ không chuẩn mực trong Chat với Chủ quán", "Chủ Quán Trà Sữa", "PENDING"));
+                userViolationRepository.save(new UserViolation(null, student, "Đăng tải đánh giá sai sự thật về chất lượng món ăn", "Chủ Quán Bún Bò", "RESOLVED"));
+                System.out.println(">> Seeded 3 User Violation reports successfully.");
             }
         }
     }

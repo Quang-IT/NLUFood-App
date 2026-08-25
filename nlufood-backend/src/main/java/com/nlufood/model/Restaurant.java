@@ -16,11 +16,15 @@ public class Restaurant {
     @Column(length = 1000)
     private String imageUrl;
     
+    private String status; // APPROVED, PENDING, REJECTED
+    
     @ManyToOne
     @JoinColumn(name = "owner_id")
     private User owner;
 
-    public Restaurant() {}
+    public Restaurant() {
+        this.status = "APPROVED";
+    }
 
     public Restaurant(Long id, String name, String address, Double rating, String imageUrl, User owner) {
         this.id = id;
@@ -28,6 +32,17 @@ public class Restaurant {
         this.address = address;
         this.rating = rating;
         this.imageUrl = imageUrl;
+        this.owner = owner;
+        this.status = "APPROVED";
+    }
+
+    public Restaurant(Long id, String name, String address, Double rating, String imageUrl, String status, User owner) {
+        this.id = id;
+        this.name = name;
+        this.address = address;
+        this.rating = rating;
+        this.imageUrl = imageUrl;
+        this.status = status != null ? status : "APPROVED";
         this.owner = owner;
     }
 
@@ -41,7 +56,8 @@ public class Restaurant {
     public void setRating(Double rating) { this.rating = rating; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public User getOwner() { return owner; }
     public void setOwner(User owner) { this.owner = owner; }
 }
-
