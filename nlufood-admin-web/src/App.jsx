@@ -426,14 +426,14 @@ export default function App() {
 
                   <div style={{ backgroundColor: colors.cardBg, padding: '20px', borderRadius: '14px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary, whiteSpace: 'nowrap' }}>💰 Tổng Doanh Thu</span>
-                      <span style={{ fontSize: '20px' }}>💵</span>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary, whiteSpace: 'nowrap' }}>💎 Doanh Thu Gói Hội Viên VIP</span>
+                      <span style={{ fontSize: '20px' }}>💰</span>
                     </div>
-                    <div style={{ fontSize: '26px', fontWeight: '800', color: colors.success, marginTop: '8px', whiteSpace: 'nowrap' }}>
-                      {overview.totalRevenue ? Number(overview.totalRevenue).toLocaleString('vi-VN') : '0'} đ
+                    <div style={{ fontSize: '26px', fontWeight: '800', color: colors.purple, marginTop: '8px', whiteSpace: 'nowrap' }}>
+                      3.500.000 đ
                     </div>
-                    <div style={{ fontSize: '12px', color: colors.success, marginTop: '4px', fontWeight: '700', whiteSpace: 'nowrap' }}>
-                      +22.4% so với tháng trước
+                    <div style={{ fontSize: '12px', color: colors.purple, marginTop: '4px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                      89 lượt đăng ký tuần này (+34.5%)
                     </div>
                   </div>
 
@@ -452,14 +452,14 @@ export default function App() {
 
                   <div style={{ backgroundColor: colors.cardBg, padding: '20px', borderRadius: '14px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary, whiteSpace: 'nowrap' }}>💎 Hội Viên NLU VIP</span>
-                      <span style={{ fontSize: '20px' }}>⭐</span>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary, whiteSpace: 'nowrap' }}>⭐ Thành Viên Đang Kích Hoạt</span>
+                      <span style={{ fontSize: '20px' }}>👑</span>
                     </div>
-                    <div style={{ fontSize: '26px', fontWeight: '800', color: colors.purple, marginTop: '8px' }}>
+                    <div style={{ fontSize: '26px', fontWeight: '800', color: colors.primary, marginTop: '8px' }}>
                       {overview.vipMembers} thành viên
                     </div>
-                    <div style={{ fontSize: '12px', color: colors.purple, marginTop: '4px', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                      Đăng ký gói VIP tiết kiệm
+                    <div style={{ fontSize: '12px', color: colors.primary, marginTop: '4px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                      Hưởng quyền lợi freeship & giảm giá
                     </div>
                   </div>
                 </div>
@@ -467,15 +467,15 @@ export default function App() {
                 {/* 2 MAIN CHARTS ROW */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '20px' }}>
                   
-                  {/* CHART 1: SVG DUAL BAR & LINE CHART DOANH THU */}
+                  {/* CHART 1: SVG DUAL BAR & LINE CHART DOANH THU GÓI VIP */}
                   <div style={{ backgroundColor: colors.cardBg, padding: '22px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: colors.textPrimary }}>📈 Biểu Đồ Doanh Thu & Đơn Hàng 7 Ngày Gần Nhất</h3>
-                        <span style={{ fontSize: '12px', color: colors.textSecondary }}>Biểu đồ cột kết hợp đường tăng trưởng (VNĐ)</span>
+                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: colors.textPrimary }}>📈 Doanh Thu Đăng Ký Gói VIP 7 Ngày Gần Nhất</h3>
+                        <span style={{ fontSize: '12px', color: colors.textSecondary }}>Tiền thu được từ việc sinh viên nâng cấp / gia hạn các gói VIP (VNĐ)</span>
                       </div>
-                      <span style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: colors.primaryLight, color: colors.primary, fontSize: '12px', fontWeight: '700' }}>
-                        Tuần Này
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: colors.purpleLight, color: colors.purple, fontSize: '12px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                        💎 Doanh Thu VIP
                       </span>
                     </div>
 
@@ -484,12 +484,12 @@ export default function App() {
                       <svg viewBox={`0 0 ${chartWidth} ${chartHeight + 35}`} style={{ width: '100%', height: '240px' }}>
                         <defs>
                           <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.85" />
-                            <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.3" />
+                            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.85" />
+                            <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.3" />
                           </linearGradient>
                           <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
-                            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
+                            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.35" />
+                            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
                           </linearGradient>
                         </defs>
 
@@ -521,14 +521,14 @@ export default function App() {
                                 height={barH}
                                 rx="6"
                                 fill="url(#barGrad)"
-                                stroke="#3b82f6"
+                                stroke="#8b5cf6"
                                 strokeWidth="1"
                               />
                               <text
                                 x={x + colWidth / 2}
                                 y={y - 6}
                                 textAnchor="middle"
-                                fill={colors.primary}
+                                fill={colors.purple}
                                 fontSize="11"
                                 fontWeight="800"
                               >
@@ -561,7 +561,7 @@ export default function App() {
                         {/* Connecting Line Chart */}
                         <polyline
                           fill="none"
-                          stroke="#2563eb"
+                          stroke="#7c3aed"
                           strokeWidth="3"
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -576,7 +576,7 @@ export default function App() {
                             cy={p.y}
                             r="5"
                             fill="#ffffff"
-                            stroke="#2563eb"
+                            stroke="#7c3aed"
                             strokeWidth="2.5"
                           />
                         ))}
@@ -584,40 +584,40 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* CHART 2: SVG DONUT CHART CƠ CẤU ĐƠN HÀNG */}
+                  {/* CHART 2: SVG DONUT CHART CƠ CẤU GÓI VIP ĐƯỢC ĐĂNG KÝ */}
                   <div style={{ backgroundColor: colors.cardBg, padding: '22px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column' }}>
-                    <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: colors.textPrimary }}>🍩 Cơ Cấu Trạng Thái Đơn</h3>
-                    <span style={{ fontSize: '12px', color: colors.textSecondary }}>Phân bổ đơn hàng thực tế</span>
+                    <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: colors.textPrimary }}>🍩 Cơ Cấu Gói VIP Đăng Ký</h3>
+                    <span style={{ fontSize: '12px', color: colors.textSecondary }}>Tỷ lệ sinh viên lựa chọn các gói VIP</span>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '16px', position: 'relative' }}>
                       <svg width="150" height="150" viewBox="0 0 150 150">
                         {/* Background track */}
                         <circle cx="75" cy="75" r="55" fill="none" stroke={isDark ? '#374151' : '#e2e8f0'} strokeWidth="18" />
                         
-                        {/* Completed slice: 60% (circumference = 345.5) -> dash = 207.3 */}
-                        <circle cx="75" cy="75" r="55" fill="none" stroke="#10b981" strokeWidth="18" strokeDasharray="207.3 345.5" strokeDashoffset="0" transform="rotate(-90 75 75)" />
+                        {/* VIP Gold slice: 45% (circumference = 345.5) -> dash = 155.5 */}
+                        <circle cx="75" cy="75" r="55" fill="none" stroke="#eab308" strokeWidth="18" strokeDasharray="155.5 345.5" strokeDashoffset="0" transform="rotate(-90 75 75)" />
                         
-                        {/* Preparing slice: 20% -> dash = 69.1 */}
-                        <circle cx="75" cy="75" r="55" fill="none" stroke="#3b82f6" strokeWidth="18" strokeDasharray="69.1 345.5" strokeDashoffset="-207.3" transform="rotate(-90 75 75)" />
+                        {/* HSSV Bạc slice: 30% -> dash = 103.6 */}
+                        <circle cx="75" cy="75" r="55" fill="none" stroke="#0284c7" strokeWidth="18" strokeDasharray="103.6 345.5" strokeDashoffset="-155.5" transform="rotate(-90 75 75)" />
                         
-                        {/* Delivering slice: 15% -> dash = 51.8 */}
-                        <circle cx="75" cy="75" r="55" fill="none" stroke="#f59e0b" strokeWidth="18" strokeDasharray="51.8 345.5" strokeDashoffset="-276.4" transform="rotate(-90 75 75)" />
+                        {/* Kim Cương slice: 15% -> dash = 51.8 */}
+                        <circle cx="75" cy="75" r="55" fill="none" stroke="#ec4899" strokeWidth="18" strokeDasharray="51.8 345.5" strokeDashoffset="-259.1" transform="rotate(-90 75 75)" />
                         
-                        {/* Cancelled slice: 5% -> dash = 17.3 */}
-                        <circle cx="75" cy="75" r="55" fill="none" stroke="#ef4444" strokeWidth="18" strokeDasharray="17.3 345.5" strokeDashoffset="-328.2" transform="rotate(-90 75 75)" />
+                        {/* Dùng Thử slice: 10% -> dash = 34.6 */}
+                        <circle cx="75" cy="75" r="55" fill="none" stroke="#8b5cf6" strokeWidth="18" strokeDasharray="34.6 345.5" strokeDashoffset="-310.9" transform="rotate(-90 75 75)" />
                         
-                        <text x="75" y="72" textAnchor="middle" fill={colors.textPrimary} fontSize="18" fontWeight="800">20</text>
-                        <text x="75" y="86" textAnchor="middle" fill={colors.textSecondary} fontSize="11" fontWeight="600">Tổng đơn</text>
+                        <text x="75" y="72" textAnchor="middle" fill={colors.textPrimary} fontSize="18" fontWeight="800">89</text>
+                        <text x="75" y="86" textAnchor="middle" fill={colors.textSecondary} fontSize="11" fontWeight="600">Lượt Mua</text>
                       </svg>
                     </div>
 
                     {/* Chart Legends */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
                       {[
-                        { label: 'Đã hoàn tất', count: '12 đơn', pct: '60%', color: '#10b981' },
-                        { label: 'Đang chuẩn bị món', count: '4 đơn', pct: '20%', color: '#3b82f6' },
-                        { label: 'Đang giao hàng', count: '3 đơn', pct: '15%', color: '#f59e0b' },
-                        { label: 'Đã huỷ đơn', count: '1 đơn', pct: '5%', color: '#ef4444' }
+                        { label: 'Gói VIP Gold (39k/tháng)', count: '40 lượt', pct: '45%', color: '#eab308' },
+                        { label: 'Gói HSSV Bạc (19k/tháng)', count: '27 lượt', pct: '30%', color: '#0284c7' },
+                        { label: 'Gói Kim Cương (99k/học kỳ)', count: '13 lượt', pct: '15%', color: '#ec4899' },
+                        { label: 'Gói VIP Thần Ăn (149k/kỳ)', count: '9 lượt', pct: '10%', color: '#8b5cf6' }
                       ].map((item, idx) => (
                         <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
