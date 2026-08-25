@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -27,8 +27,28 @@ export default function ProfileScreen({ user, onUpdateUser, onLogout, navigation
   const [imageUrl, setImageUrl] = useState(user?.imageUrl || '');
   const [membershipTier, setMembershipTier] = useState(user?.membershipTier || 'NORMAL');
   const [loading, setLoading] = useState(false);
+  const [vipPackages, setVipPackages] = useState([]);
+  const [loadingVip, setLoadingVip] = useState(false);
 
   const isOwner = user?.role === 'OWNER';
+
+  useEffect(() => {
+    fetchVipPackages();
+  }, []);
+
+  const fetchVipPackages = async () => {
+    setLoadingVip(true);
+    try {
+      const res = await axios.get(`${API_BASE_URL}/vip-packages`);
+      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+        setVipPackages(res.data);
+      }
+    } catch (e) {
+      console.log('Error fetching VIP packages:', e.message);
+    } finally {
+      setLoadingVip(false);
+    }
+  };
 
   const pickAvatar = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -67,24 +87,27 @@ export default function ProfileScreen({ user, onUpdateUser, onLogout, navigation
     }
   };
 
-  const handleSubscribeMembership = async (tier) => {
+  const handleSubscribeMembership = async (pkg) => {
     Alert.alert(
-      'Xác nhận đăng ký',
-      `Bạn muốn nâng cấp gói ${tier}?`,
+      'Xác nhận đăng ký Gói VIP',
+      `Bạn muốn đăng ký ${pkg.name} với giá ${pkg.price === 0 ? 'Miễn phí' : `${Number(pkg.price).toLocaleString('vi-VN')}đ`} / ${pkg.durationDays} ngày?`,
       [
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Đăng ký ngay',
           onPress: async () => {
             try {
-              const res = await axios.put(`${API_BASE_URL}/users/${user.id}/membership?tier=${tier}`);
-              setMembershipTier(tier);
-              onUpdateUser(res.data);
-              await AsyncStorage.setItem('user_session', JSON.stringify(res.data));
-              Alert.alert('🎉 Thành công', `Đã nâng cấp gói ${tier}!`);
+              const res = await axios.post(`${API_BASE_URL}/vip-packages/${pkg.id}/subscribe/${user.id}`);
+              const updatedTier = res.data.membershipTier || 'GOLD';
+              setMembershipTier(updatedTier);
+              
+              const updatedUser = { ...user, membershipTier: updatedTier };
+              onUpdateUser(updatedUser);
+              await AsyncStorage.setItem('user_session', JSON.stringify(updatedUser));
+              Alert.alert('🎉 Thành công', `Chúc mừng bạn đã nâng cấp ${pkg.name}!`);
               setView('main');
             } catch (e) {
-              Alert.alert('Lỗi', 'Không thể đăng ký gói.');
+              Alert.alert('Lỗi', 'Không thể đăng ký gói VIP.');
             }
           }
         }
@@ -94,10 +117,10 @@ export default function ProfileScreen({ user, onUpdateUser, onLogout, navigation
 
   const getTierBadge = (t) => {
     switch (t) {
-      case 'SILVER': return 'Gói HSSV Tiết Kiệm 🥈';
-      case 'GOLD': return 'Gói NLU VIP Pro 🥇';
-      case 'DIAMOND': return 'Gói Thần Ăn Nông Lâm 💎';
-      default: return 'Thành viên Tiêu chuẩn';
+      case 'SILVER': return 'HSSV Bạc 🥈';
+      case 'GOLD': return 'VIP Gold 🥇';
+      case 'DIAMOND': return 'Thần Ăn Kim Cương 💎';
+      default: return 'Thành viên Tiêu chuẩn ⭐';
     }
   };
 
@@ -140,15 +163,15 @@ export default function ProfileScreen({ user, onUpdateUser, onLogout, navigation
                   <Text style={styles.roleText}>{isOwner ? 'Đối tác Cửa hàng' : 'Sinh viên NLU'}</Text>
                 </View>
                 <View style={styles.tierBadge}>
-                  <Text style={styles.tierText}>{getTierBadge(user?.membershipTier)}</Text>
+                  <Text style={styles.tierText}>{getTierBadge(user?.membershipTier || membershipTier)}</Text>
                 </View>
               </View>
             </View>
 
             {/* Menu Sections */}
             <View style={styles.menuBox}>
-              <TouchableOpacity style={styles.menuItem} onPress={() => setView('membership')}>
-                <Ionicons name="ribbon-outline" size={22} color="#FFB800" />
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setView('membership'); fetchVipPackages(); }}>
+                <Ionicons name="ribbon-outline" size={22} color="#8B5CF6" />
                 <Text style={styles.menuItemText}>Gói Hội Viên NLU VIP</Text>
                 <Ionicons name="chevron-forward" size={18} color="#CCC" />
               </TouchableOpacity>
@@ -223,29 +246,68 @@ export default function ProfileScreen({ user, onUpdateUser, onLogout, navigation
 
         {view === 'membership' && (
           <View>
-            {[
-              { id: 'NORMAL', name: 'Gói Tiêu chuẩn', price: 'Miễn phí', desc: 'Đặt đồ ăn tiêu chuẩn NLU' },
-              { id: 'SILVER', name: 'Gói HSSV Tiết Kiệm 🥈', price: '19.000đ / tháng', desc: 'Freeship 5 đơn/tháng + Giảm 10% quán NLU' },
-              { id: 'GOLD', name: 'Gói NLU VIP Pro 🥇', price: '39.000đ / tháng', desc: 'Freeship 100% mọi đơntừ 40k + Voucher 20k/tuần' },
-              { id: 'DIAMOND', name: 'Gói Thần Ăn Nông Lâm 💎', price: '69.000đ / tháng', desc: 'Freeship KHÔNG GIỚI HẠN + Voucher 50k/tuần + Giao hỏa tốc 15p' }
-            ].map(pkg => (
-              <View key={pkg.id} style={styles.pkgCard}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={styles.pkgTitle}>{pkg.name}</Text>
-                  <Text style={styles.pkgPrice}>{pkg.price}</Text>
-                </View>
-                <Text style={styles.pkgDesc}>{pkg.desc}</Text>
-                {membershipTier === pkg.id ? (
-                  <View style={styles.currentPkgBadge}>
-                    <Text style={styles.currentPkgText}>✓ Gói hiện tại</Text>
+            <Text style={{ fontSize: 13, color: '#666', marginBottom: 14, lineHeight: 18 }}>
+              🌟 Đăng ký Gói VIP để tận hưởng ưu đãi Freeship và giảm giá độc quyền dành riêng cho sinh viên NLU!
+            </Text>
+
+            {loadingVip ? (
+              <ActivityIndicator size="large" color="#8B5CF6" style={{ marginVertical: 30 }} />
+            ) : vipPackages.length > 0 ? (
+              vipPackages.map(pkg => {
+                const isCurrent = 
+                  (membershipTier === 'SILVER' && (pkg.name.toLowerCase().includes('đồng') || pkg.name.toLowerCase().includes('silver') || pkg.name.toLowerCase().includes('bạc'))) ||
+                  (membershipTier === 'GOLD' && (pkg.name.toLowerCase().includes('vàng') || pkg.name.toLowerCase().includes('gold'))) ||
+                  (membershipTier === 'DIAMOND' && (pkg.name.toLowerCase().includes('kim cương') || pkg.name.toLowerCase().includes('diamond')));
+
+                return (
+                  <View key={pkg.id} style={styles.pkgCard}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontSize: 20 }}>💎</Text>
+                        <Text style={styles.pkgTitle}>{pkg.name}</Text>
+                      </View>
+                      <Text style={styles.pkgPrice}>
+                        {pkg.price === 0 ? 'Miễn phí' : `${Number(pkg.price).toLocaleString('vi-VN')} đ`}
+                      </Text>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', gap: 8, marginVertical: 8 }}>
+                      <View style={{ backgroundColor: '#F3E8FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 11, color: '#8B5CF6', fontWeight: 'bold' }}>
+                          ⏱️ {pkg.durationDays} ngày
+                        </Text>
+                      </View>
+                      <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 11, color: '#16A34A', fontWeight: 'bold' }}>
+                          🛵 {pkg.freeshipCount} lượt Freeship
+                        </Text>
+                      </View>
+                      <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 11, color: '#D97706', fontWeight: 'bold' }}>
+                          🏷️ Giảm {pkg.discountPercent}%
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.pkgDesc}>{pkg.description || 'Gói quyền lợi ưu đãi NLU'}</Text>
+
+                    {isCurrent ? (
+                      <View style={styles.currentPkgBadge}>
+                        <Text style={styles.currentPkgText}>✓ Gói Hiện Tại Đang Sử Dụng</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity style={styles.subBtn} onPress={() => handleSubscribeMembership(pkg)}>
+                        <Text style={styles.subBtnText}>Đăng ký ngay</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                ) : (
-                  <TouchableOpacity style={styles.subBtn} onPress={() => handleSubscribeMembership(pkg.id)}>
-                    <Text style={styles.subBtnText}>Đăng ký ngay</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
+                );
+              })
+            ) : (
+              <Text style={{ textAlign: 'center', color: '#999', marginVertical: 20 }}>
+                Không có gói VIP nào khả dụng.
+              </Text>
+            )}
           </View>
         )}
       </ScrollView>
@@ -262,35 +324,35 @@ const styles = StyleSheet.create({
   avatarWrapper: { width: 84, height: 84, borderRadius: 42, overflow: 'hidden', position: 'relative' },
   avatarImg: { width: '100%', height: '100%' },
   avatarPlaceholder: { width: '100%', height: '100%', backgroundColor: '#FFF0E6', justifyContent: 'center', alignItems: 'center' },
-  cameraIcon: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#FF6B00', width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderHeight: 2, borderColor: '#FFF' },
+  cameraIcon: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#FF6B00', width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' },
   userName: { fontSize: 18, fontWeight: 'bold', color: '#222', marginTop: 10 },
   userEmail: { fontSize: 12, color: '#777', marginTop: 2 },
   badgeRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
   roleBadge: { backgroundColor: '#FFF0E6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   roleText: { fontSize: 10, fontWeight: 'bold', color: '#FF6B00' },
-  tierBadge: { backgroundColor: '#FFF8E1', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  tierText: { fontSize: 10, fontWeight: 'bold', color: '#FF8F00' },
-  menuBox: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#EEE', marginBottom: 16 },
+  tierBadge: { backgroundColor: '#F3E8FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: '#DDD6FE' },
+  tierText: { fontSize: 10, fontWeight: 'bold', color: '#8B5CF6' },
+  menuBox: { backgroundColor: '#FFF', borderRadius: 16, marginBottom: 20, borderWidth: 1, borderColor: '#EEE', overflow: 'hidden' },
   menuItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderColor: '#F5F5F5' },
-  menuItemText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#333', marginLeft: 12 },
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFEBEE', paddingVertical: 14, borderRadius: 16 },
-  logoutText: { fontSize: 14, fontWeight: 'bold', color: '#E53935', marginLeft: 8 },
-  card: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#EEE' },
-  label: { fontSize: 11, fontWeight: 'bold', color: '#555', uppercase: 'uppercase', marginBottom: 6 },
-  input: { backgroundColor: '#F9F9F9', borderWidth: 1, borderColor: '#DDD', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#333', marginBottom: 14 },
-  genderRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-  genderBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#DDD', alignItems: 'center' },
-  genderBtnActive: { backgroundColor: '#FF6B00', borderColor: '#FF6B00' },
-  genderText: { fontSize: 13, color: '#555', fontWeight: '600' },
-  genderTextActive: { color: '#FFF', fontWeight: 'bold' },
-  saveBtn: { backgroundColor: '#FF6B00', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 10 },
+  menuItemText: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: '600', color: '#333' },
+  logoutBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 14, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#FFEBEE' },
+  logoutText: { marginLeft: 8, color: '#E53935', fontSize: 15, fontWeight: 'bold' },
+  card: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#EEE' },
+  label: { fontSize: 13, fontWeight: 'bold', color: '#555', marginTop: 12, marginBottom: 6 },
+  input: { backgroundColor: '#F9F9F9', borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#222' },
+  genderRow: { flexDirection: 'row', gap: 10 },
+  genderBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 10, backgroundColor: '#F9F9F9' },
+  genderBtnActive: { borderColor: '#FF6B00', backgroundColor: '#FFF0E6' },
+  genderText: { fontSize: 13, color: '#666', fontWeight: '500' },
+  genderTextActive: { color: '#FF6B00', fontWeight: 'bold' },
+  saveBtn: { backgroundColor: '#FF6B00', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 24 },
   saveBtnText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' },
-  pkgCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#EEE' },
-  pkgTitle: { fontSize: 15, fontWeight: 'bold', color: '#222' },
-  pkgPrice: { fontSize: 13, fontWeight: 'bold', color: '#FF6B00' },
-  pkgDesc: { fontSize: 12, color: '#666', marginTop: 6, marginBottom: 12 },
-  subBtn: { backgroundColor: '#FF6B00', borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
-  subBtnText: { color: '#FFF', fontSize: 13, fontWeight: 'bold' },
-  currentPkgBadge: { backgroundColor: '#E8F5E9', paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
-  currentPkgText: { color: '#2E7D32', fontSize: 13, fontWeight: 'bold' }
+  pkgCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, elevation: 1 },
+  pkgTitle: { fontSize: 16, fontWeight: 'bold', color: '#1E293B' },
+  pkgPrice: { fontSize: 16, fontWeight: 'bold', color: '#8B5CF6' },
+  pkgDesc: { fontSize: 13, color: '#64748B', marginTop: 4, lineHeight: 18 },
+  currentPkgBadge: { marginTop: 12, backgroundColor: '#DCFCE7', paddingVertical: 8, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#86EFAC' },
+  currentPkgText: { color: '#16A34A', fontWeight: 'bold', fontSize: 13 },
+  subBtn: { marginTop: 12, backgroundColor: '#8B5CF6', paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+  subBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 14 }
 });
