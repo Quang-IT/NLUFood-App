@@ -47,7 +47,7 @@ export default function App() {
       setRestaurants(resRests || []);
       setVipPackages(resVips || []);
       
-      // Deduplicate violations if any
+      // Deduplicate violations
       const uniqueViols = (resViols || []).filter((v, index, self) =>
         index === self.findIndex((t) => t.id === v.id || (t.reason === v.reason && t.reporterName === v.reporterName))
       );
@@ -206,283 +206,425 @@ export default function App() {
   const pendingRestaurantsCount = restaurants.filter(r => (r.status === 'PENDING')).length;
   const pendingViolationsCount = violations.filter(v => (v.status === 'PENDING')).length;
 
-  // --- STYLING HELPERS FOR THEMES ---
+  // --- THEME COLOR PALETTE ---
   const isDark = theme === 'dark';
   const colors = {
-    bg: isDark ? '#0f172a' : '#f1f5f9',
-    cardBg: isDark ? '#1e293b' : '#ffffff',
-    cardBgAlt: isDark ? '#0f172a' : '#f8fafc',
-    sidebarBg: isDark ? '#1e293b' : '#ffffff',
-    textPrimary: isDark ? '#f8fafc' : '#0f172a',
-    textSecondary: isDark ? '#94a3b8' : '#64748b',
-    border: isDark ? '#334155' : '#e2e8f0',
+    bg: isDark ? '#090d16' : '#f8fafc',
+    sidebarBg: isDark ? '#111827' : '#ffffff',
+    cardBg: isDark ? '#1f2937' : '#ffffff',
+    cardBgAlt: isDark ? '#111827' : '#f1f5f9',
+    textPrimary: isDark ? '#f9fafb' : '#0f172a',
+    textSecondary: isDark ? '#9ca3af' : '#64748b',
+    border: isDark ? '#374151' : '#e2e8f0',
     primary: '#2563eb',
+    primaryHover: '#1d4ed8',
+    primaryLight: isDark ? '#1e3a8a' : '#dbeafe',
     success: '#10b981',
+    successLight: isDark ? '#064e3b' : '#d1fae5',
     warning: '#f59e0b',
+    warningLight: isDark ? '#78350f' : '#fef3c7',
     danger: '#ef4444',
+    dangerLight: isDark ? '#7f1d1d' : '#fee2e2',
     purple: '#8b5cf6',
-    hover: isDark ? '#334155' : '#e2e8f0'
+    purpleLight: isDark ? '#581c87' : '#f3e8ff'
   };
 
+  // --- 7-DAY REVENUE DATA FOR SVG CHARTS ---
+  const revenueChartData = [
+    { day: 'Thứ 2', date: '19/08', value: 380000, orders: 12 },
+    { day: 'Thứ 3', date: '20/08', value: 520000, orders: 18 },
+    { day: 'Thứ 4', date: '21/08', value: 410000, orders: 14 },
+    { day: 'Thứ 5', date: '22/08', value: 680000, orders: 22 },
+    { day: 'Thứ 6', date: '23/08', value: 850000, orders: 28 },
+    { day: 'Thứ 7', date: '24/08', value: 590000, orders: 19 },
+    { day: 'Chủ Nhật', date: '25/08', value: 460000, orders: 15 }
+  ];
+
+  const maxRev = 900000;
+  const chartHeight = 180;
+  const chartWidth = 520;
+  const colWidth = 36;
+  const paddingX = 40;
+  const stepX = (chartWidth - paddingX * 2) / (revenueChartData.length - 1);
+
+  // Generate SVG Points for Line & Area Chart
+  const svgPoints = revenueChartData.map((d, i) => {
+    const x = paddingX + i * stepX;
+    const y = chartHeight - (d.value / maxRev) * (chartHeight - 30);
+    return { x, y, ...d };
+  });
+
+  const polylineStr = svgPoints.map(p => `${p.x},${p.y}`).join(' ');
+  const areaPathStr = `M ${svgPoints[0].x},${chartHeight} ` + svgPoints.map(p => `L ${p.x},${p.y}`).join(' ') + ` L ${svgPoints[svgPoints.length - 1].x},${chartHeight} Z`;
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: colors.bg, color: colors.textPrimary, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: colors.bg, color: colors.textPrimary, width: '100vw', overflowX: 'hidden' }}>
       
       {/* SIDEBAR NAVIGATION */}
-      <aside style={{ width: '280px', backgroundColor: colors.sidebarBg, padding: '24px', display: 'flex', flexDirection: 'column', borderRight: `1px solid ${colors.border}`, transition: 'all 0.3s ease' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '32px' }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '14px', backgroundColor: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)' }}>
-            🍔
+      <aside style={{ width: '280px', minWidth: '280px', backgroundColor: colors.sidebarBg, padding: '24px 20px', display: 'flex', flexDirection: 'column', borderRight: `1px solid ${colors.border}`, zIndex: 10 }}>
+        
+        {/* LOGO & TITLE */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px', paddingLeft: '6px' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', color: '#fff', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)', flexShrink: 0 }}>
+            🍱
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '19px', fontWeight: '800', color: colors.primary, letterSpacing: '-0.5px' }}>NLUFood Admin</h2>
-            <span style={{ fontSize: '12px', color: colors.textSecondary, fontWeight: '500' }}>Cổng Quản Trị Hệ Thống</span>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: colors.textPrimary, whiteSpace: 'nowrap' }}>NLUFood Admin</h2>
+            <span style={{ fontSize: '12px', color: colors.textSecondary, fontWeight: '600', whiteSpace: 'nowrap' }}>Quản Trị Hệ Thống</span>
           </div>
         </div>
 
+        {/* NAVIGATION LINKS */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
           {[
             { id: 'overview', label: 'Thống Kê Tổng Quan', icon: '📊', badge: null },
-            { id: 'restaurants', label: 'Duyệt Quán Ăn', icon: '🏪', badge: pendingRestaurantsCount > 0 ? pendingRestaurantsCount : null, badgeColor: '#f59e0b' },
+            { id: 'restaurants', label: 'Duyệt Quán Ăn', icon: '🏪', badge: pendingRestaurantsCount > 0 ? `${pendingRestaurantsCount} chờ` : null, badgeColor: colors.warning },
             { id: 'users', label: 'Quản Lý Người Dùng', icon: '👥', badge: null },
-            { id: 'vips', label: 'Gói Hội Viên VIP', icon: '💎', badge: vipPackages.length, badgeColor: '#8b5cf6' },
-            { id: 'violations', label: 'Báo Cáo Vi Phạm', icon: '🚨', badge: pendingViolationsCount > 0 ? pendingViolationsCount : null, badgeColor: '#ef4444' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 16px',
-                borderRadius: '12px',
-                border: 'none',
-                backgroundColor: activeTab === tab.id ? colors.primary : 'transparent',
-                color: activeTab === tab.id ? '#ffffff' : colors.textPrimary,
-                fontSize: '14px',
-                fontWeight: activeTab === tab.id ? '700' : '500',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '18px' }}>{tab.icon}</span>
-                <span>{tab.label}</span>
-              </div>
-              {tab.badge !== null && (
-                <span style={{
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                  fontSize: '11px',
-                  fontWeight: '800',
-                  backgroundColor: activeTab === tab.id ? '#ffffff' : (tab.badgeColor || colors.primary),
-                  color: activeTab === tab.id ? colors.primary : '#ffffff'
-                }}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          ))}
+            { id: 'vips', label: 'Gói Hội Viên VIP', icon: '💎', badge: `${vipPackages.length} gói`, badgeColor: colors.purple },
+            { id: 'violations', label: 'Báo Cáo Vi Phạm', icon: '🚨', badge: pendingViolationsCount > 0 ? `${pendingViolationsCount} mới` : null, badgeColor: colors.danger },
+          ].map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  backgroundColor: isActive ? colors.primary : 'transparent',
+                  color: isActive ? '#ffffff' : colors.textPrimary,
+                  fontSize: '14px',
+                  fontWeight: isActive ? '700' : '600',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '17px', flexShrink: 0 }}>{tab.icon}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>{tab.label}</span>
+                </div>
+                {tab.badge !== null && (
+                  <span style={{
+                    padding: '2px 8px',
+                    borderRadius: '20px',
+                    fontSize: '11px',
+                    fontWeight: '800',
+                    backgroundColor: isActive ? '#ffffff' : (tab.badgeColor || colors.primary),
+                    color: isActive ? colors.primary : '#ffffff',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Theme Switcher & Footer */}
-        <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {/* THEME TOGGLE & FOOTER */}
+        <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <button
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '10px',
-              padding: '10px 16px',
+              gap: '8px',
+              padding: '10px 14px',
               borderRadius: '10px',
               border: `1px solid ${colors.border}`,
               backgroundColor: colors.cardBgAlt,
               color: colors.textPrimary,
               fontSize: '13px',
-              fontWeight: '600',
-              cursor: 'pointer'
+              fontWeight: '700',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
             }}
           >
-            {isDark ? '☀️ Chuyển Giao Diện Sáng' : '🌙 Chuyển Giao Diện Tối'}
+            {isDark ? '☀️ Chế Độ Giao Diện Sáng' : '🌙 Chế Độ Giao Diện Tối'}
           </button>
-          <div style={{ fontSize: '12px', color: colors.textSecondary, textAlign: 'center' }}>
+          <div style={{ fontSize: '11px', color: colors.textSecondary, textAlign: 'center', fontWeight: '500' }}>
             ĐH Nông Lâm TP.HCM • Spring Boot & React
           </div>
         </div>
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main style={{ flex: 1, padding: '32px 40px', overflowY: 'auto' }}>
+      <main style={{ flex: 1, padding: '32px 36px', overflowY: 'auto', minWidth: '0' }}>
         
         {/* HEADER BAR */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'nowrap', gap: '16px' }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '26px', fontWeight: '800', color: colors.textPrimary, letterSpacing: '-0.5px' }}>
-              {activeTab === 'overview' && '📊 Bảng Thống Kê & Báo Cáo'}
+            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '800', color: colors.textPrimary, letterSpacing: '-0.3px', whiteSpace: 'nowrap' }}>
+              {activeTab === 'overview' && '📊 Thống Kê & Báo Cáo Hoạt Động'}
               {activeTab === 'restaurants' && '🏪 Danh Sách & Phê Duyệt Quán Ăn'}
               {activeTab === 'users' && '👥 Quản Lý Tài Khoản & Phân Hạng Thành Viên'}
               {activeTab === 'vips' && '💎 Quản Lý Các Gói Hội Viên NLU VIP'}
               {activeTab === 'violations' && '🚨 Trung Tâm Xử Lý Báo Cáo Vi Phạm'}
             </h1>
-            <p style={{ margin: '6px 0 0', fontSize: '14px', color: colors.textSecondary }}>
-              Cơ sở dữ liệu H2 Persistent File • Đồng bộ RESTful API Real-time
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: colors.textSecondary, whiteSpace: 'nowrap' }}>
+              Cơ sở dữ liệu H2 Persistent File • Kết nối Spring Boot REST API
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
             <button
               onClick={fetchData}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '10px 18px',
-                borderRadius: '10px',
+                padding: '9px 16px',
+                borderRadius: '8px',
                 backgroundColor: colors.primary,
                 color: '#ffffff',
                 border: 'none',
-                fontSize: '14px',
-                fontWeight: '600',
+                fontSize: '13px',
+                fontWeight: '700',
                 cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)'
+                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                whiteSpace: 'nowrap'
               }}
             >
-              🔄 Làm mới dữ liệu
+              🔄 Tải lại dữ liệu
             </button>
           </div>
         </header>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '100px 0', fontSize: '16px', color: colors.textSecondary }}>
+          <div style={{ textAlign: 'center', padding: '100px 0', fontSize: '15px', color: colors.textSecondary, fontWeight: '600' }}>
             ⏳ Đang tải dữ liệu từ máy chủ Spring Boot...
           </div>
         ) : (
           <div>
             {/* ======================================================== */}
-            {/* TAB 1: THỐNG KÊ TỔNG QUAN (VỚI CÁC BIỂU ĐỒ TRỰC QUAN) */}
+            {/* TAB 1: THỐNG KÊ TỔNG QUAN (VỚI BIỂU ĐỒ CỘT & ĐƯỜNG SVG) */}
             {/* ======================================================== */}
             {activeTab === 'overview' && overview && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 
-                {/* 4 KPI CARDS */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-                  <div style={{ backgroundColor: colors.cardBg, padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                {/* 4 KPI METRIC CARDS */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '18px' }}>
+                  <div style={{ backgroundColor: colors.cardBg, padding: '20px', borderRadius: '14px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: colors.textSecondary }}>👥 Tổng Người Dùng</span>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary, whiteSpace: 'nowrap' }}>👥 Tổng Người Dùng</span>
                       <span style={{ fontSize: '20px' }}>🎓</span>
                     </div>
-                    <div style={{ fontSize: '28px', fontWeight: '800', color: colors.primary, marginTop: '12px' }}>
+                    <div style={{ fontSize: '26px', fontWeight: '800', color: colors.primary, marginTop: '8px' }}>
                       {overview.totalUsers}
                     </div>
-                    <div style={{ fontSize: '13px', color: colors.textSecondary, marginTop: '4px' }}>
+                    <div style={{ fontSize: '12px', color: colors.textSecondary, marginTop: '4px', whiteSpace: 'nowrap' }}>
                       {overview.totalStudents} Sinh viên • {overview.totalOwners} Chủ quán
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: colors.cardBg, padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <div style={{ backgroundColor: colors.cardBg, padding: '20px', borderRadius: '14px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: colors.textSecondary }}>💰 Tổng Doanh Thu</span>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary, whiteSpace: 'nowrap' }}>💰 Tổng Doanh Thu</span>
                       <span style={{ fontSize: '20px' }}>💵</span>
                     </div>
-                    <div style={{ fontSize: '28px', fontWeight: '800', color: colors.success, marginTop: '12px' }}>
+                    <div style={{ fontSize: '26px', fontWeight: '800', color: colors.success, marginTop: '8px', whiteSpace: 'nowrap' }}>
                       {overview.totalRevenue ? Number(overview.totalRevenue).toLocaleString('vi-VN') : '0'} đ
                     </div>
-                    <div style={{ fontSize: '13px', color: colors.success, marginTop: '4px', fontWeight: '600' }}>
-                      +18.5% so với tuần trước
+                    <div style={{ fontSize: '12px', color: colors.success, marginTop: '4px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                      +22.4% so với tháng trước
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: colors.cardBg, padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <div style={{ backgroundColor: colors.cardBg, padding: '20px', borderRadius: '14px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: colors.textSecondary }}>📦 Tổng Đơn Hàng</span>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary, whiteSpace: 'nowrap' }}>📦 Tổng Đơn Hàng</span>
                       <span style={{ fontSize: '20px' }}>🛵</span>
                     </div>
-                    <div style={{ fontSize: '28px', fontWeight: '800', color: '#f59e0b', marginTop: '12px' }}>
+                    <div style={{ fontSize: '26px', fontWeight: '800', color: colors.warning, marginTop: '8px' }}>
                       {overview.totalOrders} đơn
                     </div>
-                    <div style={{ fontSize: '13px', color: colors.textSecondary, marginTop: '4px' }}>
-                      Toàn bộ các căn tin & quán ăn
+                    <div style={{ fontSize: '12px', color: colors.textSecondary, marginTop: '4px', whiteSpace: 'nowrap' }}>
+                      Giao tới KTX A, KTX B & Giảng đường
                     </div>
                   </div>
 
-                  <div style={{ backgroundColor: colors.cardBg, padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <div style={{ backgroundColor: colors.cardBg, padding: '20px', borderRadius: '14px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: colors.textSecondary }}>💎 Hội Viên NLU VIP</span>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary, whiteSpace: 'nowrap' }}>💎 Hội Viên NLU VIP</span>
                       <span style={{ fontSize: '20px' }}>⭐</span>
                     </div>
-                    <div style={{ fontSize: '28px', fontWeight: '800', color: colors.purple, marginTop: '12px' }}>
+                    <div style={{ fontSize: '26px', fontWeight: '800', color: colors.purple, marginTop: '8px' }}>
                       {overview.vipMembers} thành viên
                     </div>
-                    <div style={{ fontSize: '13px', color: colors.purple, marginTop: '4px' }}>
-                      Hạng Silver, Gold & Diamond
+                    <div style={{ fontSize: '12px', color: colors.purple, marginTop: '4px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                      Đăng ký gói VIP tiết kiệm
                     </div>
                   </div>
                 </div>
 
-                {/* VISUAL CHARTS SECTION (SVG DRIVEN - NO EXTERNAL HEAVY LIBS) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+                {/* 2 MAIN CHARTS ROW */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: '20px' }}>
                   
-                  {/* CHART 1: BIỂU ĐỒ DOANH THU 7 NGÀY */}
-                  <div style={{ backgroundColor: colors.cardBg, padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  {/* CHART 1: SVG DUAL BAR & LINE CHART DOANH THU */}
+                  <div style={{ backgroundColor: colors.cardBg, padding: '22px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: colors.textPrimary }}>📈 Biểu Đồ Doanh Thu 7 Ngày Gần Nhất (VNĐ)</h3>
-                        <span style={{ fontSize: '12px', color: colors.textSecondary }}>Thống kê theo đơn hoàn thành</span>
+                        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: colors.textPrimary }}>📈 Biểu Đồ Doanh Thu & Đơn Hàng 7 Ngày Gần Nhất</h3>
+                        <span style={{ fontSize: '12px', color: colors.textSecondary }}>Biểu đồ cột kết hợp đường tăng trưởng (VNĐ)</span>
                       </div>
-                      <span style={{ padding: '4px 10px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, fontSize: '12px', fontWeight: '600', color: colors.primary }}>
+                      <span style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: colors.primaryLight, color: colors.primary, fontSize: '12px', fontWeight: '700' }}>
                         Tuần Này
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '220px', padding: '10px 10px 0', borderBottom: `1px solid ${colors.border}` }}>
-                      {[
-                        { day: 'T2', val: 320000, h: '55%' },
-                        { day: 'T3', val: 480000, h: '75%' },
-                        { day: 'T4', val: 290000, h: '45%' },
-                        { day: 'T5', val: 560000, h: '90%' },
-                        { day: 'T6', val: 620000, h: '100%' },
-                        { day: 'T7', val: 450000, h: '70%' },
-                        { day: 'CN', val: 380000, h: '60%' }
-                      ].map((item, idx) => (
-                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', width: '44px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: '700', color: colors.primary }}>{(item.val / 1000)}k</span>
-                          <div
-                            style={{
-                              width: '100%',
-                              height: item.h,
-                              backgroundColor: idx === 4 ? colors.primary : (isDark ? '#3b82f688' : '#93c5fd'),
-                              borderRadius: '8px 8px 0 0',
-                              transition: 'height 0.4s ease'
-                            }}
+                    {/* SVG CHART CONTAINER */}
+                    <div style={{ width: '100%', overflowX: 'auto' }}>
+                      <svg viewBox={`0 0 ${chartWidth} ${chartHeight + 35}`} style={{ width: '100%', height: '240px' }}>
+                        <defs>
+                          <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.85" />
+                            <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.3" />
+                          </linearGradient>
+                          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.35" />
+                            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+
+                        {/* Y-Axis Grid Lines */}
+                        {[0, 200000, 400000, 600000, 800000].map((val, idx) => {
+                          const y = chartHeight - (val / maxRev) * (chartHeight - 30);
+                          return (
+                            <g key={idx}>
+                              <line x1="10" y1={y} x2={chartWidth - 10} y2={y} stroke={isDark ? '#374151' : '#e2e8f0'} strokeDasharray="3 3" strokeWidth="1" />
+                              <text x="12" y={y - 4} fill={colors.textSecondary} fontSize="10" fontWeight="600">{(val / 1000)}k</text>
+                            </g>
+                          );
+                        })}
+
+                        {/* Area Gradient under line */}
+                        <path d={areaPathStr} fill="url(#areaGrad)" />
+
+                        {/* Bars for each day */}
+                        {revenueChartData.map((d, i) => {
+                          const barH = (d.value / maxRev) * (chartHeight - 30);
+                          const x = paddingX + i * stepX - colWidth / 2;
+                          const y = chartHeight - barH;
+                          return (
+                            <g key={i}>
+                              <rect
+                                x={x}
+                                y={y}
+                                width={colWidth}
+                                height={barH}
+                                rx="6"
+                                fill="url(#barGrad)"
+                                stroke="#3b82f6"
+                                strokeWidth="1"
+                              />
+                              <text
+                                x={x + colWidth / 2}
+                                y={y - 6}
+                                textAnchor="middle"
+                                fill={colors.primary}
+                                fontSize="11"
+                                fontWeight="800"
+                              >
+                                {d.value / 1000}k
+                              </text>
+                              <text
+                                x={x + colWidth / 2}
+                                y={chartHeight + 16}
+                                textAnchor="middle"
+                                fill={colors.textPrimary}
+                                fontSize="11"
+                                fontWeight="700"
+                              >
+                                {d.day}
+                              </text>
+                              <text
+                                x={x + colWidth / 2}
+                                y={chartHeight + 28}
+                                textAnchor="middle"
+                                fill={colors.textSecondary}
+                                fontSize="10"
+                                fontWeight="500"
+                              >
+                                {d.date}
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* Connecting Line Chart */}
+                        <polyline
+                          fill="none"
+                          stroke="#2563eb"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          points={polylineStr}
+                        />
+
+                        {/* Data Points / Circles */}
+                        {svgPoints.map((p, i) => (
+                          <circle
+                            key={i}
+                            cx={p.x}
+                            cy={p.y}
+                            r="5"
+                            fill="#ffffff"
+                            stroke="#2563eb"
+                            strokeWidth="2.5"
                           />
-                          <span style={{ fontSize: '12px', fontWeight: '600', color: colors.textSecondary, marginTop: '6px' }}>{item.day}</span>
-                        </div>
-                      ))}
+                        ))}
+                      </svg>
                     </div>
                   </div>
 
-                  {/* CHART 2: PHÂN BỔ TRẠNG THÁI ĐƠN HÀNG (DONUT / PROGRESS BARS) */}
-                  <div style={{ backgroundColor: colors.cardBg, padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                    <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '700', color: colors.textPrimary }}>🍩 Cơ Cấu Trạng Thái Đơn</h3>
-                    <span style={{ fontSize: '12px', color: colors.textSecondary }}>Tỷ lệ đơn hàng trên hệ thống</span>
+                  {/* CHART 2: SVG DONUT CHART CƠ CẤU ĐƠN HÀNG */}
+                  <div style={{ backgroundColor: colors.cardBg, padding: '22px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column' }}>
+                    <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: colors.textPrimary }}>🍩 Cơ Cấu Trạng Thái Đơn</h3>
+                    <span style={{ fontSize: '12px', color: colors.textSecondary }}>Phân bổ đơn hàng thực tế</span>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '16px', position: 'relative' }}>
+                      <svg width="150" height="150" viewBox="0 0 150 150">
+                        {/* Background track */}
+                        <circle cx="75" cy="75" r="55" fill="none" stroke={isDark ? '#374151' : '#e2e8f0'} strokeWidth="18" />
+                        
+                        {/* Completed slice: 60% (circumference = 345.5) -> dash = 207.3 */}
+                        <circle cx="75" cy="75" r="55" fill="none" stroke="#10b981" strokeWidth="18" strokeDasharray="207.3 345.5" strokeDashoffset="0" transform="rotate(-90 75 75)" />
+                        
+                        {/* Preparing slice: 20% -> dash = 69.1 */}
+                        <circle cx="75" cy="75" r="55" fill="none" stroke="#3b82f6" strokeWidth="18" strokeDasharray="69.1 345.5" strokeDashoffset="-207.3" transform="rotate(-90 75 75)" />
+                        
+                        {/* Delivering slice: 15% -> dash = 51.8 */}
+                        <circle cx="75" cy="75" r="55" fill="none" stroke="#f59e0b" strokeWidth="18" strokeDasharray="51.8 345.5" strokeDashoffset="-276.4" transform="rotate(-90 75 75)" />
+                        
+                        {/* Cancelled slice: 5% -> dash = 17.3 */}
+                        <circle cx="75" cy="75" r="55" fill="none" stroke="#ef4444" strokeWidth="18" strokeDasharray="17.3 345.5" strokeDashoffset="-328.2" transform="rotate(-90 75 75)" />
+                        
+                        <text x="75" y="72" textAnchor="middle" fill={colors.textPrimary} fontSize="18" fontWeight="800">20</text>
+                        <text x="75" y="86" textAnchor="middle" fill={colors.textSecondary} fontSize="11" fontWeight="600">Tổng đơn</text>
+                      </svg>
+                    </div>
+
+                    {/* Chart Legends */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
                       {[
-                        { label: 'Đã hoàn tất (Completed)', count: '12 đơn', pct: 60, color: colors.success },
-                        { label: 'Đang chuẩn bị (Preparing)', count: '4 đơn', pct: 20, color: colors.primary },
-                        { label: 'Đang giao hàng (Delivering)', count: '3 đơn', pct: 15, color: colors.warning },
-                        { label: 'Đã huỷ (Cancelled)', count: '1 đơn', pct: 5, color: colors.danger }
-                      ].map((st, i) => (
-                        <div key={i}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '600', marginBottom: '6px' }}>
-                            <span style={{ color: colors.textPrimary }}>{st.label}</span>
-                            <span style={{ color: st.color }}>{st.count} ({st.pct}%)</span>
+                        { label: 'Đã hoàn tất', count: '12 đơn', pct: '60%', color: '#10b981' },
+                        { label: 'Đang chuẩn bị món', count: '4 đơn', pct: '20%', color: '#3b82f6' },
+                        { label: 'Đang giao hàng', count: '3 đơn', pct: '15%', color: '#f59e0b' },
+                        { label: 'Đã huỷ đơn', count: '1 đơn', pct: '5%', color: '#ef4444' }
+                      ].map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '10px', height: '10px', borderRadius: '3px', backgroundColor: item.color, flexShrink: 0 }} />
+                            <span style={{ color: colors.textPrimary, fontWeight: '600', whiteSpace: 'nowrap' }}>{item.label}</span>
                           </div>
-                          <div style={{ width: '100%', height: '8px', backgroundColor: colors.cardBgAlt, borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${st.pct}%`, height: '100%', backgroundColor: st.color, borderRadius: '4px' }} />
-                          </div>
+                          <span style={{ fontWeight: '700', color: item.color, whiteSpace: 'nowrap' }}>{item.count} ({item.pct})</span>
                         </div>
                       ))}
                     </div>
@@ -490,42 +632,42 @@ export default function App() {
 
                 </div>
 
-                {/* ROW 3: TOP QUÁN ĂN & HỘI VIÊN */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                {/* ROW 3: TOP QUÁN ĂN & PHÂN BỔ HỘI VIÊN */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                   
                   {/* TOP QUÁN ĂN */}
-                  <div style={{ backgroundColor: colors.cardBg, padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}` }}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '700', color: colors.textPrimary }}>🏆 Top 4 Quán Ăn Đánh Giá Cao Nhất NLU</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ backgroundColor: colors.cardBg, padding: '22px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
+                    <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: '800', color: colors.textPrimary }}>🏆 Top 4 Quán Ăn Đánh Giá Cao Nhất NLU</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {restaurants.slice(0, 4).map((r, idx) => (
-                        <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: '12px', backgroundColor: colors.cardBgAlt }}>
+                        <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '10px', backgroundColor: colors.cardBgAlt }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: '800', color: colors.primary, width: '20px' }}>#{idx + 1}</span>
-                            <img src={r.imageUrl} alt={r.name} style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
+                            <span style={{ fontSize: '14px', fontWeight: '800', color: colors.primary, width: '18px' }}>#{idx + 1}</span>
+                            <img src={r.imageUrl} alt={r.name} style={{ width: '38px', height: '38px', borderRadius: '8px', objectFit: 'cover' }} />
                             <div>
-                              <div style={{ fontSize: '14px', fontWeight: '700', color: colors.textPrimary }}>{r.name}</div>
-                              <div style={{ fontSize: '12px', color: colors.textSecondary }}>{r.address}</div>
+                              <div style={{ fontSize: '14px', fontWeight: '700', color: colors.textPrimary, whiteSpace: 'nowrap' }}>{r.name}</div>
+                              <div style={{ fontSize: '12px', color: colors.textSecondary, whiteSpace: 'nowrap' }}>{r.address}</div>
                             </div>
                           </div>
-                          <span style={{ fontSize: '13px', fontWeight: '800', color: colors.warning }}>⭐ {r.rating}</span>
+                          <span style={{ fontSize: '13px', fontWeight: '800', color: colors.warning, whiteSpace: 'nowrap' }}>⭐ {r.rating}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* VIP SUMMARY */}
-                  <div style={{ backgroundColor: colors.cardBg, padding: '24px', borderRadius: '16px', border: `1px solid ${colors.border}` }}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '700', color: colors.textPrimary }}>💎 Phân Bổ Hạng Thành Viên Sinh Viên</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div style={{ backgroundColor: colors.cardBg, padding: '22px', borderRadius: '16px', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
+                    <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: '800', color: colors.textPrimary }}>💎 Phân Bổ Hạng Hội Viên Sinh Viên</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       {[
                         { tier: 'NORMAL', name: 'Tiêu Chuẩn', color: '#64748b', count: users.filter(u => !u.membershipTier || u.membershipTier === 'NORMAL').length },
                         { tier: 'SILVER', name: 'HSSV Bạc', color: '#0284c7', count: users.filter(u => u.membershipTier === 'SILVER').length },
                         { tier: 'GOLD', name: 'VIP Gold', color: '#eab308', count: users.filter(u => u.membershipTier === 'GOLD').length },
-                        { tier: 'DIAMOND', name: 'Thần Ăn Diamond', color: '#ec4899', count: users.filter(u => u.membershipTier === 'DIAMOND').length }
+                        { tier: 'DIAMOND', name: 'Kim Cương', color: '#ec4899', count: users.filter(u => u.membershipTier === 'DIAMOND').length }
                       ].map((item, idx) => (
-                        <div key={idx} style={{ padding: '16px', borderRadius: '12px', backgroundColor: colors.cardBgAlt, borderLeft: `4px solid ${item.color}` }}>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: colors.textSecondary }}>{item.name}</div>
-                          <div style={{ fontSize: '20px', fontWeight: '800', color: item.color, marginTop: '4px' }}>{item.count} SV</div>
+                        <div key={idx} style={{ padding: '14px 16px', borderRadius: '10px', backgroundColor: colors.cardBgAlt, borderLeft: `4px solid ${item.color}` }}>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: colors.textSecondary, whiteSpace: 'nowrap' }}>{item.name}</div>
+                          <div style={{ fontSize: '20px', fontWeight: '800', color: item.color, marginTop: '4px', whiteSpace: 'nowrap' }}>{item.count} Sinh viên</div>
                         </div>
                       ))}
                     </div>
@@ -541,85 +683,87 @@ export default function App() {
             {/* ======================================================== */}
             {activeTab === 'restaurants' && (
               <div>
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', gap: '14px', marginBottom: '18px' }}>
                   <input
                     type="text"
                     placeholder="🔍 Tìm kiếm quán ăn theo tên hoặc địa chỉ..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    style={{ flex: 1, padding: '12px 18px', borderRadius: '12px', backgroundColor: colors.cardBg, border: `1px solid ${colors.border}`, color: colors.textPrimary, fontSize: '14px' }}
+                    style={{ flex: 1, padding: '11px 16px', borderRadius: '10px', backgroundColor: colors.cardBg, border: `1px solid ${colors.border}`, color: colors.textPrimary, fontSize: '14px' }}
                   />
                   <select
                     value={filterRestStatus}
                     onChange={e => setFilterRestStatus(e.target.value)}
-                    style={{ padding: '12px 18px', borderRadius: '12px', backgroundColor: colors.cardBg, border: `1px solid ${colors.border}`, color: colors.textPrimary, fontSize: '14px', fontWeight: '600' }}
+                    style={{ padding: '11px 16px', borderRadius: '10px', backgroundColor: colors.cardBg, border: `1px solid ${colors.border}`, color: colors.textPrimary, fontSize: '13px', fontWeight: '700', whiteSpace: 'nowrap', minWidth: '180px' }}
                   >
                     <option value="ALL">Tất cả trạng thái ({restaurants.length})</option>
                     <option value="PENDING">⏳ Chờ duyệt ({pendingRestaurantsCount})</option>
                     <option value="APPROVED">✅ Đã duyệt ({restaurants.filter(r => (r.status === 'APPROVED' || !r.status)).length})</option>
-                    <option value="REJECTED">❌ Đã từ chối / Tạm dừng ({restaurants.filter(r => r.status === 'REJECTED').length})</option>
+                    <option value="REJECTED">❌ Từ chối / Tạm dừng ({restaurants.filter(r => r.status === 'REJECTED').length})</option>
                   </select>
                 </div>
 
-                <div style={{ backgroundColor: colors.cardBg, borderRadius: '16px', overflow: 'hidden', border: `1px solid ${colors.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ backgroundColor: colors.cardBg, borderRadius: '14px', overflow: 'hidden', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                      <tr style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.cardBgAlt, color: colors.textSecondary, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        <th style={{ padding: '16px 20px' }}>Tên Quán Ăn</th>
-                        <th style={{ padding: '16px 20px' }}>Địa Chỉ</th>
-                        <th style={{ padding: '16px 20px' }}>Đánh Giá</th>
-                        <th style={{ padding: '16px 20px' }}>Trạng Thái</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'right' }}>Hành Động Quản Trị</th>
+                      <tr style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.cardBgAlt, color: colors.textSecondary, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Tên Quán Ăn</th>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Địa Chỉ</th>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Đánh Giá</th>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Trạng Thái</th>
+                        <th style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>Hành Động Phê Duyệt</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredRestaurants.map(r => {
                         const status = r.status || 'APPROVED';
                         return (
-                          <tr key={r.id} style={{ borderBottom: `1px solid ${colors.border}`, transition: 'background 0.2s ease' }}>
-                            <td style={{ padding: '16px 20px', fontWeight: '600' }}>
+                          <tr key={r.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
+                            <td style={{ padding: '14px 18px', fontWeight: '600' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <img src={r.imageUrl} alt={r.name} style={{ width: '42px', height: '42px', borderRadius: '10px', objectFit: 'cover' }} />
+                                <img src={r.imageUrl} alt={r.name} style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }} />
                                 <div>
-                                  <div style={{ fontSize: '15px', color: colors.textPrimary, fontWeight: '700' }}>{r.name}</div>
-                                  <div style={{ fontSize: '12px', color: colors.textSecondary }}>Chủ quán: {r.owner ? r.owner.name : 'NLU Quán'}</div>
+                                  <div style={{ fontSize: '14px', color: colors.textPrimary, fontWeight: '700', whiteSpace: 'nowrap' }}>{r.name}</div>
+                                  <div style={{ fontSize: '12px', color: colors.textSecondary, whiteSpace: 'nowrap' }}>Chủ quán: {r.owner ? r.owner.name : 'NLU Quán'}</div>
                                 </div>
                               </div>
                             </td>
-                            <td style={{ padding: '16px 20px', color: colors.textSecondary, fontSize: '14px' }}>{r.address}</td>
-                            <td style={{ padding: '16px 20px', color: colors.warning, fontWeight: '700', fontSize: '14px' }}>⭐ {r.rating}</td>
-                            <td style={{ padding: '16px 20px' }}>
+                            <td style={{ padding: '14px 18px', color: colors.textSecondary, fontSize: '13px', whiteSpace: 'nowrap' }}>{r.address}</td>
+                            <td style={{ padding: '14px 18px', color: colors.warning, fontWeight: '800', fontSize: '14px', whiteSpace: 'nowrap' }}>⭐ {r.rating}</td>
+                            <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                               <span style={{
-                                padding: '6px 12px',
+                                padding: '5px 12px',
                                 borderRadius: '20px',
                                 fontSize: '12px',
                                 fontWeight: '700',
-                                backgroundColor: status === 'APPROVED' ? (isDark ? '#064e3b' : '#d1fae5') : (status === 'PENDING' ? (isDark ? '#78350f' : '#fef3c7') : (isDark ? '#7f1d1d' : '#fee2e2')),
-                                color: status === 'APPROVED' ? '#059669' : (status === 'PENDING' ? '#d97706' : '#dc2626'),
+                                whiteSpace: 'nowrap',
+                                display: 'inline-block',
+                                backgroundColor: status === 'APPROVED' ? colors.successLight : (status === 'PENDING' ? colors.warningLight : colors.dangerLight),
+                                color: status === 'APPROVED' ? '#047857' : (status === 'PENDING' ? '#b45309' : '#b91c1c'),
                                 border: `1px solid ${status === 'APPROVED' ? '#10b981' : (status === 'PENDING' ? '#f59e0b' : '#ef4444')}`
                               }}>
                                 {status === 'APPROVED' ? '✅ Đã duyệt' : (status === 'PENDING' ? '⏳ Chờ duyệt' : '❌ Từ chối')}
                               </span>
                             </td>
-                            <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                            <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                 {status === 'PENDING' && (
                                   <>
-                                    <button onClick={() => handleRestaurantStatus(r.id, 'APPROVED')} style={{ padding: '7px 14px', borderRadius: '8px', backgroundColor: colors.success, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}>
+                                    <button onClick={() => handleRestaurantStatus(r.id, 'APPROVED')} style={{ padding: '7px 13px', borderRadius: '8px', backgroundColor: colors.success, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' }}>
                                       ✅ Phê Duyệt
                                     </button>
-                                    <button onClick={() => handleRestaurantStatus(r.id, 'REJECTED')} style={{ padding: '7px 14px', borderRadius: '8px', backgroundColor: colors.danger, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}>
+                                    <button onClick={() => handleRestaurantStatus(r.id, 'REJECTED')} style={{ padding: '7px 13px', borderRadius: '8px', backgroundColor: colors.danger, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' }}>
                                       ❌ Từ Chối
                                     </button>
                                   </>
                                 )}
                                 {status === 'APPROVED' && (
-                                  <button onClick={() => handleRestaurantStatus(r.id, 'REJECTED')} style={{ padding: '7px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, color: colors.danger, border: `1px solid ${colors.border}`, cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+                                  <button onClick={() => handleRestaurantStatus(r.id, 'REJECTED')} style={{ padding: '7px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, color: colors.danger, border: `1px solid ${colors.border}`, cursor: 'pointer', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' }}>
                                     ⏸️ Tạm Dừng Quán
                                   </button>
                                 )}
                                 {status === 'REJECTED' && (
-                                  <button onClick={() => handleRestaurantStatus(r.id, 'APPROVED')} style={{ padding: '7px 14px', borderRadius: '8px', backgroundColor: colors.success, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}>
+                                  <button onClick={() => handleRestaurantStatus(r.id, 'APPROVED')} style={{ padding: '7px 14px', borderRadius: '8px', backgroundColor: colors.success, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' }}>
                                     🔄 Duyệt Lại
                                   </button>
                                 )}
@@ -639,18 +783,18 @@ export default function App() {
             {/* ======================================================== */}
             {activeTab === 'users' && (
               <div>
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', gap: '14px', marginBottom: '18px' }}>
                   <input
                     type="text"
                     placeholder="🔍 Tìm kiếm sinh viên / chủ quán theo tên hoặc email..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    style={{ flex: 1, padding: '12px 18px', borderRadius: '12px', backgroundColor: colors.cardBg, border: `1px solid ${colors.border}`, color: colors.textPrimary, fontSize: '14px' }}
+                    style={{ flex: 1, padding: '11px 16px', borderRadius: '10px', backgroundColor: colors.cardBg, border: `1px solid ${colors.border}`, color: colors.textPrimary, fontSize: '14px' }}
                   />
                   <select
                     value={filterRole}
                     onChange={e => setFilterRole(e.target.value)}
-                    style={{ padding: '12px 18px', borderRadius: '12px', backgroundColor: colors.cardBg, border: `1px solid ${colors.border}`, color: colors.textPrimary, fontSize: '14px', fontWeight: '600' }}
+                    style={{ padding: '11px 16px', borderRadius: '10px', backgroundColor: colors.cardBg, border: `1px solid ${colors.border}`, color: colors.textPrimary, fontSize: '13px', fontWeight: '700', whiteSpace: 'nowrap', minWidth: '180px' }}
                   >
                     <option value="ALL">Tất cả vai trò ({users.length})</option>
                     <option value="STUDENT">🎓 Sinh viên ({users.filter(u => u.role === 'STUDENT').length})</option>
@@ -659,15 +803,15 @@ export default function App() {
                   </select>
                 </div>
 
-                <div style={{ backgroundColor: colors.cardBg, borderRadius: '16px', overflow: 'hidden', border: `1px solid ${colors.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ backgroundColor: colors.cardBg, borderRadius: '14px', overflow: 'hidden', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                      <tr style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.cardBgAlt, color: colors.textSecondary, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        <th style={{ padding: '16px 20px' }}>Người Dùng</th>
-                        <th style={{ padding: '16px 20px' }}>Vai Trò</th>
-                        <th style={{ padding: '16px 20px' }}>Hạng Thành Viên (VIP)</th>
-                        <th style={{ padding: '16px 20px' }}>Trạng Thái</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'right' }}>Hành Động</th>
+                      <tr style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.cardBgAlt, color: colors.textSecondary, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Người Dùng</th>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Vai Trò</th>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Hạng Thành Viên (VIP)</th>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Trạng Thái</th>
+                        <th style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>Hành Động</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -676,29 +820,31 @@ export default function App() {
                         const isBanned = u.status === 'BANNED';
                         return (
                           <tr key={u.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
-                            <td style={{ padding: '16px 20px' }}>
-                              <div style={{ fontWeight: '700', fontSize: '15px', color: colors.textPrimary }}>{u.name}</div>
-                              <div style={{ fontSize: '13px', color: colors.textSecondary }}>{u.email} • {u.phoneNumber || 'Chưa cập nhật SĐT'}</div>
+                            <td style={{ padding: '14px 18px' }}>
+                              <div style={{ fontWeight: '700', fontSize: '14px', color: colors.textPrimary, whiteSpace: 'nowrap' }}>{u.name}</div>
+                              <div style={{ fontSize: '12px', color: colors.textSecondary, whiteSpace: 'nowrap' }}>{u.email} • {u.phoneNumber || '0988 123 456'}</div>
                             </td>
-                            <td style={{ padding: '16px 20px' }}>
+                            <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                               <span style={{
                                 padding: '4px 10px',
-                                borderRadius: '8px',
+                                borderRadius: '6px',
                                 fontSize: '12px',
                                 fontWeight: '700',
-                                backgroundColor: u.role === 'ADMIN' ? '#fef3c7' : (u.role === 'OWNER' ? '#e0e7ff' : '#dcfce7'),
-                                color: u.role === 'ADMIN' ? '#b45309' : (u.role === 'OWNER' ? '#4338ca' : '#15803d')
+                                whiteSpace: 'nowrap',
+                                backgroundColor: u.role === 'ADMIN' ? colors.warningLight : (u.role === 'OWNER' ? colors.primaryLight : colors.successLight),
+                                color: u.role === 'ADMIN' ? '#b45309' : (u.role === 'OWNER' ? '#1d4ed8' : '#047857')
                               }}>
                                 {u.role === 'STUDENT' ? '🎓 Sinh Viên' : (u.role === 'OWNER' ? '👨‍🍳 Chủ Quán' : '🛡️ Admin')}
                               </span>
                             </td>
-                            <td style={{ padding: '16px 20px' }}>
+                            <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{
                                   padding: '5px 12px',
                                   borderRadius: '20px',
                                   fontSize: '12px',
                                   fontWeight: '800',
+                                  whiteSpace: 'nowrap',
                                   backgroundColor: tier === 'DIAMOND' ? '#fdf2f8' : (tier === 'GOLD' ? '#fefce8' : (tier === 'SILVER' ? '#f0f9ff' : colors.cardBgAlt)),
                                   color: tier === 'DIAMOND' ? '#db2777' : (tier === 'GOLD' ? '#ca8a04' : (tier === 'SILVER' ? '#0284c7' : colors.textSecondary)),
                                   border: `1px solid ${tier === 'DIAMOND' ? '#f472b6' : (tier === 'GOLD' ? '#facc15' : (tier === 'SILVER' ? '#38bdf8' : colors.border))}`
@@ -710,26 +856,27 @@ export default function App() {
                                 </span>
                                 <button
                                   onClick={() => { setSelectedUser(u); setNewTier(tier); setTierModalOpen(true); }}
-                                  style={{ padding: '4px 8px', borderRadius: '6px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.primary, cursor: 'pointer', fontSize: '11px', fontWeight: '700' }}
+                                  style={{ padding: '4px 8px', borderRadius: '6px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.primary, cursor: 'pointer', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}
                                   title="Đổi hạng VIP"
                                 >
                                   ✏️ Đổi Hạng
                                 </button>
                               </div>
                             </td>
-                            <td style={{ padding: '16px 20px' }}>
+                            <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                               <span style={{
                                 padding: '4px 10px',
-                                borderRadius: '12px',
+                                borderRadius: '10px',
                                 fontSize: '12px',
                                 fontWeight: '700',
-                                backgroundColor: isBanned ? '#fee2e2' : '#dcfce7',
-                                color: isBanned ? '#b91c1c' : '#15803d'
+                                whiteSpace: 'nowrap',
+                                backgroundColor: isBanned ? colors.dangerLight : colors.successLight,
+                                color: isBanned ? '#b91c1c' : '#047857'
                               }}>
                                 {isBanned ? '🚫 Đã Khóa' : '🟢 Hoạt Động'}
                               </span>
                             </td>
-                            <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                            <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <button
                                 onClick={() => handleToggleUserStatus(u.id, u.status)}
                                 style={{
@@ -739,8 +886,9 @@ export default function App() {
                                   color: '#fff',
                                   border: 'none',
                                   cursor: 'pointer',
-                                  fontWeight: '600',
-                                  fontSize: '12px'
+                                  fontWeight: '700',
+                                  fontSize: '12px',
+                                  whiteSpace: 'nowrap'
                                 }}
                               >
                                 {isBanned ? '🔓 Mở Khóa' : '🔒 Khóa Tài Khoản'}
@@ -760,39 +908,40 @@ export default function App() {
             {/* ======================================================== */}
             {activeTab === 'vips' && (
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: colors.textPrimary }}>Danh Sách Các Gói Hội Viên NLU VIP</h3>
-                    <span style={{ fontSize: '13px', color: colors.textSecondary }}>Hỗ trợ sinh viên tích điểm, giảm giá và miễn phí vận chuyển</span>
+                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: colors.textPrimary, whiteSpace: 'nowrap' }}>Danh Sách Các Gói Hội Viên NLU VIP</h3>
+                    <span style={{ fontSize: '13px', color: colors.textSecondary, whiteSpace: 'nowrap' }}>Hỗ trợ sinh viên tích điểm, giảm giá và miễn phí vận chuyển</span>
                   </div>
                   <button
                     onClick={() => handleOpenVipModal()}
                     style={{
-                      padding: '10px 20px',
+                      padding: '10px 18px',
                       borderRadius: '10px',
                       backgroundColor: colors.purple,
                       color: '#ffffff',
                       border: 'none',
-                      fontSize: '14px',
+                      fontSize: '13px',
                       fontWeight: '700',
                       cursor: 'pointer',
-                      boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)'
+                      boxShadow: '0 2px 8px rgba(139, 92, 246, 0.3)',
+                      whiteSpace: 'nowrap'
                     }}
                   >
                     + Thêm Gói VIP Mới
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
                   {vipPackages.map(pkg => (
                     <div
                       key={pkg.id}
                       style={{
                         backgroundColor: colors.cardBg,
-                        borderRadius: '16px',
-                        padding: '24px',
+                        borderRadius: '14px',
+                        padding: '22px',
                         border: `1px solid ${colors.border}`,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between'
@@ -800,37 +949,37 @@ export default function App() {
                     >
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                          <span style={{ padding: '4px 10px', borderRadius: '12px', backgroundColor: '#f3e8ff', color: colors.purple, fontSize: '12px', fontWeight: '800' }}>
+                          <span style={{ padding: '4px 10px', borderRadius: '10px', backgroundColor: colors.purpleLight, color: colors.purple, fontSize: '12px', fontWeight: '800', whiteSpace: 'nowrap' }}>
                             {pkg.durationDays} ngày
                           </span>
                           <span style={{ fontSize: '20px' }}>💎</span>
                         </div>
 
-                        <h4 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '800', color: colors.textPrimary }}>
+                        <h4 style={{ margin: '0 0 8px', fontSize: '17px', fontWeight: '800', color: colors.textPrimary, whiteSpace: 'nowrap' }}>
                           {pkg.name}
                         </h4>
                         
-                        <div style={{ fontSize: '24px', fontWeight: '900', color: colors.primary, marginBottom: '16px' }}>
+                        <div style={{ fontSize: '22px', fontWeight: '900', color: colors.primary, marginBottom: '14px', whiteSpace: 'nowrap' }}>
                           {pkg.price === 0 ? 'Miễn phí' : `${Number(pkg.price).toLocaleString('vi-VN')} đ`}
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: colors.textSecondary, marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: colors.textSecondary, marginBottom: '18px' }}>
                           <div>✅ <strong>Giảm giá món ăn:</strong> {pkg.discountPercent}%</div>
                           <div>🛵 <strong>Lượt Freeship:</strong> {pkg.freeshipCount} lượt/tháng</div>
                           <div>📝 <strong>Mô tả:</strong> {pkg.description || 'Không có mô tả'}</div>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '10px', borderTop: `1px solid ${colors.border}`, paddingTop: '16px' }}>
+                      <div style={{ display: 'flex', gap: '10px', borderTop: `1px solid ${colors.border}`, paddingTop: '14px' }}>
                         <button
                           onClick={() => handleOpenVipModal(pkg)}
-                          style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.primary, cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.primary, cursor: 'pointer', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' }}
                         >
                           ✏️ Sửa Gói
                         </button>
                         <button
                           onClick={() => handleDeleteVipPackage(pkg.id)}
-                          style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: '#fee2e2', border: 'none', color: colors.danger, cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}
+                          style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: colors.dangerLight, border: 'none', color: colors.danger, cursor: 'pointer', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' }}
                         >
                           🗑️ Xoá
                         </button>
@@ -846,15 +995,15 @@ export default function App() {
             {/* ======================================================== */}
             {activeTab === 'violations' && (
               <div>
-                <div style={{ backgroundColor: colors.cardBg, borderRadius: '16px', overflow: 'hidden', border: `1px solid ${colors.border}`, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ backgroundColor: colors.cardBg, borderRadius: '14px', overflow: 'hidden', border: `1px solid ${colors.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
-                      <tr style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.cardBgAlt, color: colors.textSecondary, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        <th style={{ padding: '16px 20px' }}>Tài Khoản Bị Báo Cáo</th>
-                        <th style={{ padding: '16px 20px' }}>Lý Do Vi Phạm</th>
-                        <th style={{ padding: '16px 20px' }}>Người Báo Cáo</th>
-                        <th style={{ padding: '16px 20px' }}>Trạng Thái</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'right' }}>Hành Động Xử Lý</th>
+                      <tr style={{ borderBottom: `1px solid ${colors.border}`, backgroundColor: colors.cardBgAlt, color: colors.textSecondary, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Tài Khoản Bị Báo Cáo</th>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Lý Do Vi Phạm</th>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Người Báo Cáo</th>
+                        <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Trạng Thái</th>
+                        <th style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>Hành Động Xử Lý</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -862,41 +1011,42 @@ export default function App() {
                         const isResolved = v.status === 'RESOLVED';
                         return (
                           <tr key={v.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
-                            <td style={{ padding: '16px 20px' }}>
-                              <div style={{ fontWeight: '700', fontSize: '15px', color: colors.textPrimary }}>{v.user ? v.user.name : 'Người dùng'}</div>
-                              <div style={{ fontSize: '13px', color: colors.textSecondary }}>{v.user ? v.user.email : ''}</div>
+                            <td style={{ padding: '14px 18px' }}>
+                              <div style={{ fontWeight: '700', fontSize: '14px', color: colors.textPrimary, whiteSpace: 'nowrap' }}>{v.user ? v.user.name : 'Sinh viên'}</div>
+                              <div style={{ fontSize: '12px', color: colors.textSecondary, whiteSpace: 'nowrap' }}>{v.user ? v.user.email : ''}</div>
                             </td>
-                            <td style={{ padding: '16px 20px', color: colors.danger, fontWeight: '600', fontSize: '14px' }}>
+                            <td style={{ padding: '14px 18px', color: colors.danger, fontWeight: '700', fontSize: '13px', whiteSpace: 'nowrap' }}>
                               ⚠️ {v.reason}
                             </td>
-                            <td style={{ padding: '16px 20px', color: colors.textSecondary, fontSize: '14px' }}>
+                            <td style={{ padding: '14px 18px', color: colors.textSecondary, fontSize: '13px', whiteSpace: 'nowrap' }}>
                               {v.reporterName || 'Hệ thống tự động phát hiện'}
                             </td>
-                            <td style={{ padding: '16px 20px' }}>
+                            <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                               <span style={{
                                 padding: '4px 10px',
-                                borderRadius: '12px',
+                                borderRadius: '10px',
                                 fontSize: '12px',
                                 fontWeight: '700',
-                                backgroundColor: isResolved ? '#dcfce7' : '#fee2e2',
-                                color: isResolved ? '#15803d' : '#b91c1c'
+                                whiteSpace: 'nowrap',
+                                backgroundColor: isResolved ? colors.successLight : colors.dangerLight,
+                                color: isResolved ? '#047857' : '#b91c1c'
                               }}>
                                 {isResolved ? '✅ Đã Xử Lý' : '⏳ Chờ Xử Lý'}
                               </span>
                             </td>
-                            <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                            <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                 {!isResolved && (
                                   <>
                                     <button
                                       onClick={() => handleResolveViolation(v.id, 'RESOLVED')}
-                                      style={{ padding: '6px 12px', borderRadius: '8px', backgroundColor: colors.success, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '12px' }}
+                                      style={{ padding: '6px 12px', borderRadius: '8px', backgroundColor: colors.success, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' }}
                                     >
                                       ✅ Đã Xử Lý
                                     </button>
                                     <button
                                       onClick={() => handleResolveViolation(v.id, 'BANNED')}
-                                      style={{ padding: '6px 12px', borderRadius: '8px', backgroundColor: colors.danger, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '12px' }}
+                                      style={{ padding: '6px 12px', borderRadius: '8px', backgroundColor: colors.danger, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '12px', whiteSpace: 'nowrap' }}
                                     >
                                       🚫 Khóa Tài Khoản
                                     </button>
@@ -904,7 +1054,7 @@ export default function App() {
                                 )}
                                 <button
                                   onClick={() => handleDeleteViolation(v.id)}
-                                  style={{ padding: '6px 10px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, color: colors.textSecondary, border: `1px solid ${colors.border}`, cursor: 'pointer', fontSize: '12px' }}
+                                  style={{ padding: '6px 10px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, color: colors.textSecondary, border: `1px solid ${colors.border}`, cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}
                                   title="Xoá báo cáo"
                                 >
                                   🗑️ Xoá
@@ -930,92 +1080,92 @@ export default function App() {
       {/* ======================================================== */}
       {vipModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: colors.cardBg, width: '480px', borderRadius: '20px', padding: '32px', border: `1px solid ${colors.border}`, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
-            <h3 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: '800', color: colors.textPrimary }}>
+          <div style={{ backgroundColor: colors.cardBg, width: '460px', borderRadius: '18px', padding: '28px', border: `1px solid ${colors.border}`, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ margin: '0 0 18px', fontSize: '19px', fontWeight: '800', color: colors.textPrimary, whiteSpace: 'nowrap' }}>
               {editingVip ? '✏️ Chỉnh Sửa Gói Hội Viên VIP' : '✨ Tạo Gói Hội Viên VIP Mới'}
             </h3>
             <form onSubmit={handleSaveVipPackage} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: colors.textSecondary }}>Tên Gói VIP</label>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary }}>Tên Gói VIP</label>
                 <input
                   type="text"
                   required
                   placeholder="Ví dụ: Gói Thần Ăn Nông Lâm..."
                   value={vipForm.name}
                   onChange={e => setVipForm({ ...vipForm, name: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px' }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px', fontSize: '13px' }}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: colors.textSecondary }}>Giá Gói (VNĐ)</label>
+                  <label style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary }}>Giá Gói (VNĐ)</label>
                   <input
                     type="number"
                     required
                     placeholder="39000"
                     value={vipForm.price}
                     onChange={e => setVipForm({ ...vipForm, price: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px' }}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px', fontSize: '13px' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: colors.textSecondary }}>Thời Hạn (Ngày)</label>
+                  <label style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary }}>Thời Hạn (Ngày)</label>
                   <input
                     type="number"
                     required
                     value={vipForm.durationDays}
                     onChange={e => setVipForm({ ...vipForm, durationDays: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px' }}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px', fontSize: '13px' }}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: colors.textSecondary }}>% Giảm Giá Món</label>
+                  <label style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary }}>% Giảm Giá Món</label>
                   <input
                     type="number"
                     required
                     value={vipForm.discountPercent}
                     onChange={e => setVipForm({ ...vipForm, discountPercent: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px' }}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px', fontSize: '13px' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: colors.textSecondary }}>Lượt Freeship</label>
+                  <label style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary }}>Lượt Freeship</label>
                   <input
                     type="number"
                     required
                     value={vipForm.freeshipCount}
                     onChange={e => setVipForm({ ...vipForm, freeshipCount: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px' }}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px', fontSize: '13px' }}
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: colors.textSecondary }}>Mô Tả Quyền Lợi</label>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary }}>Mô Tả Quyền Lợi</label>
                 <textarea
                   rows="3"
                   placeholder="Freeship 100% mọi đơn từ 40k, tặng voucher giảm 20k mỗi tuần..."
                   value={vipForm.description}
                   onChange={e => setVipForm({ ...vipForm, description: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px' }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, marginTop: '4px', fontSize: '13px' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '14px' }}>
                 <button
                   type="button"
                   onClick={() => setVipModalOpen(false)}
-                  style={{ padding: '10px 18px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, cursor: 'pointer', fontWeight: '600' }}
+                  style={{ padding: '9px 16px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}
                 >
                   Huỷ Bỏ
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '10px 22px', borderRadius: '8px', backgroundColor: colors.purple, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700' }}
+                  style={{ padding: '9px 20px', borderRadius: '8px', backgroundColor: colors.purple, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}
                 >
                   {editingVip ? 'Lưu Thay Đổi' : 'Tạo Gói VIP'}
                 </button>
@@ -1030,21 +1180,21 @@ export default function App() {
       {/* ======================================================== */}
       {tierModalOpen && selectedUser && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: colors.cardBg, width: '420px', borderRadius: '20px', padding: '32px', border: `1px solid ${colors.border}`, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: '18px', fontWeight: '800', color: colors.textPrimary }}>
+          <div style={{ backgroundColor: colors.cardBg, width: '400px', borderRadius: '18px', padding: '28px', border: `1px solid ${colors.border}`, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: '18px', fontWeight: '800', color: colors.textPrimary, whiteSpace: 'nowrap' }}>
               👑 Điều Chỉnh Hạng Thành Viên
             </h3>
-            <p style={{ margin: '0 0 20px', fontSize: '14px', color: colors.textSecondary }}>
-              Cập nhật quyền lợi cho sinh viên: <strong>{selectedUser.name}</strong> ({selectedUser.email})
+            <p style={{ margin: '0 0 18px', fontSize: '13px', color: colors.textSecondary }}>
+              Cập nhật quyền lợi cho: <strong>{selectedUser.name}</strong>
             </p>
 
-            <form onSubmit={handleUpdateMembership} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleUpdateMembership} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: colors.textSecondary }}>Chọn Hạng Thành Viên</label>
+                <label style={{ fontSize: '13px', fontWeight: '700', color: colors.textSecondary }}>Chọn Hạng Mới</label>
                 <select
                   value={newTier}
                   onChange={e => setNewTier(e.target.value)}
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, fontSize: '14px', fontWeight: '700', marginTop: '6px' }}
+                  style={{ width: '100%', padding: '11px 14px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, fontSize: '14px', fontWeight: '700', marginTop: '6px' }}
                 >
                   <option value="NORMAL">⭐ Tiêu Chuẩn (NORMAL)</option>
                   <option value="SILVER">🥈 HSSV Bạc (SILVER)</option>
@@ -1053,17 +1203,17 @@ export default function App() {
                 </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '12px' }}>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '12px' }}>
                 <button
                   type="button"
                   onClick={() => setTierModalOpen(false)}
-                  style={{ padding: '10px 18px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, cursor: 'pointer', fontWeight: '600' }}
+                  style={{ padding: '9px 16px', borderRadius: '8px', backgroundColor: colors.cardBgAlt, border: `1px solid ${colors.border}`, color: colors.textPrimary, cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}
                 >
                   Huỷ
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '10px 22px', borderRadius: '8px', backgroundColor: colors.primary, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700' }}
+                  style={{ padding: '9px 20px', borderRadius: '8px', backgroundColor: colors.primary, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '13px' }}
                 >
                   Cập Nhật Hạng
                 </button>
