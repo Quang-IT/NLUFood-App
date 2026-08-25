@@ -74,6 +74,15 @@ public class AdminController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/users/{id}/membership")
+    public ResponseEntity<User> updateUserMembership(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        return userRepository.findById(id).map(user -> {
+            String newTier = body.getOrDefault("tier", "NORMAL");
+            user.setMembershipTier(newTier);
+            return ResponseEntity.ok(userRepository.save(user));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/restaurants")
     public ResponseEntity<List<Restaurant>> getAllRestaurants() {
         return ResponseEntity.ok(restaurantRepository.findAll());
@@ -95,6 +104,15 @@ public class AdminController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @PostMapping("/restaurants/{id}/status")
+    public ResponseEntity<Restaurant> updateRestaurantStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        return restaurantRepository.findById(id).map(r -> {
+            String newStatus = body.getOrDefault("status", "APPROVED");
+            r.setStatus(newStatus);
+            return ResponseEntity.ok(restaurantRepository.save(r));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/vip-packages")
     public ResponseEntity<List<VipPackage>> getVipPackages() {
         return ResponseEntity.ok(vipPackageRepository.findAll());
@@ -103,6 +121,28 @@ public class AdminController {
     @PostMapping("/vip-packages")
     public ResponseEntity<VipPackage> saveVipPackage(@RequestBody VipPackage pkg) {
         return ResponseEntity.ok(vipPackageRepository.save(pkg));
+    }
+
+    @PutMapping("/vip-packages/{id}")
+    public ResponseEntity<VipPackage> updateVipPackage(@PathVariable Long id, @RequestBody VipPackage updated) {
+        return vipPackageRepository.findById(id).map(pkg -> {
+            pkg.setName(updated.getName());
+            pkg.setPrice(updated.getPrice());
+            pkg.setDurationDays(updated.getDurationDays());
+            pkg.setDiscountPercent(updated.getDiscountPercent());
+            pkg.setFreeshipCount(updated.getFreeshipCount());
+            pkg.setDescription(updated.getDescription());
+            return ResponseEntity.ok(vipPackageRepository.save(pkg));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/vip-packages/{id}")
+    public ResponseEntity<Void> deleteVipPackage(@PathVariable Long id) {
+        if (vipPackageRepository.existsById(id)) {
+            vipPackageRepository.deleteById(id);
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.notFound().build();
     }
 
     @GetMapping("/violations")
@@ -122,5 +162,14 @@ public class AdminController {
             }
             return ResponseEntity.ok(userViolationRepository.save(v));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/violations/{id}")
+    public ResponseEntity<Void> deleteViolation(@PathVariable Long id) {
+        if (userViolationRepository.existsById(id)) {
+            userViolationRepository.deleteById(id);
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.notFound().build();
     }
 }

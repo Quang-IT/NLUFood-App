@@ -257,13 +257,16 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private void seedViolations() {
-        if (userViolationRepository.count() < 10) {
+        if (userViolationRepository.count() > 3) {
+            userViolationRepository.deleteAll();
+        }
+        if (userViolationRepository.count() == 0) {
             User student = userRepository.findByEmail("student@hcmuaf.edu.vn").orElse(null);
             if (student != null) {
                 userViolationRepository.save(new UserViolation(null, student, "Spam đặt 5 đơn ảo không lấy hàng tại Cơm Tấm Nông Lâm", "Chủ Quán Cơm Tấm", "PENDING"));
                 userViolationRepository.save(new UserViolation(null, student, "Dùng ngôn từ không chuẩn mực trong Chat với Chủ quán", "Chủ Quán Trà Sữa", "PENDING"));
                 userViolationRepository.save(new UserViolation(null, student, "Đăng tải đánh giá sai sự thật về chất lượng món ăn", "Chủ Quán Bún Bò", "RESOLVED"));
-                System.out.println(">> Seeded 3 User Violation reports successfully.");
+                System.out.println(">> Seeded 3 distinct User Violation reports successfully.");
             }
         }
     }
