@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,6 +12,7 @@ import {
   Alert,
   Platform
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../config';
@@ -31,14 +32,32 @@ export default function HomeScreen({ navigation, user, cart = [], setCart }) {
   const [favorites, setFavorites] = useState([]);
   const [hiddenRestaurants, setHiddenRestaurants] = useState({});
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
   const cartCount = (cart || []).reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = (cart || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+  const fetchUnreadNotifications = async () => {
+    if (!user?.id) return;
+    try {
+      const res = await axios.get(`${API_BASE_URL}/notifications/user/${user.id}/unread-count`);
+      setUnreadNotifCount(res.data || 0);
+    } catch (e) {
+      console.log('Lỗi lấy số thông báo chưa đọc:', e.message);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnreadNotifications();
+    }, [user?.id])
+  );
+
   useEffect(() => {
     loadLocalData();
     fetchData();
-  }, []);
+    fetchUnreadNotifications();
+  }, [user?.id]);
 
   const loadLocalData = async () => {
     try {
@@ -137,6 +156,21 @@ export default function HomeScreen({ navigation, user, cart = [], setCart }) {
               onPress={() => setShowOnlyFavorites(!showOnlyFavorites)}
             >
               <Text style={{ fontSize: 18 }}>{showOnlyFavorites ? '❤️' : '🤍'}</Text>
+            </TouchableOpacity>
+
+            {/* Notification Bell Header Badge */}
+            <TouchableOpacity
+              style={styles.headerNotifBtn}
+              onPress={() => navigation.navigate('Notifications')}
+            >
+              <Text style={{ fontSize: 19 }}>🔔</Text>
+              {unreadNotifCount > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeCount}>
+                    {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
 
             {/* Cart Header Badge */}
@@ -356,15 +390,32 @@ const styles = StyleSheet.create({
   greetingText: { fontSize: 18, fontWeight: '800', color: '#2A1608' },
   subGreeting: { fontSize: 12, color: '#7A6658', marginTop: 1 },
   favFilterBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFEAE0', justifyContent: 'center', alignItems: 'center' },
+  headerNotifBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFEAE0', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  notifBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#BA3D0E',
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFF'
+  },
+  notifBadgeCount: { color: '#FFF', fontSize: 10, fontWeight: '900' },
   headerCartBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFEAE0', justifyContent: 'center', alignItems: 'center', position: 'relative' },
   cartBadge: {
     position: 'absolute',
     top: -2,
     right: -2,
     backgroundColor: '#BA3D0E',
-    width: 18,
+    minWidth: 18,
     height: 18,
     borderRadius: 9,
+    paddingHorizontal: 4,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,

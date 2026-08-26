@@ -2,10 +2,12 @@ package com.nlufood.controller;
 
 import com.nlufood.model.ChatMessage;
 import com.nlufood.model.Notification;
+import com.nlufood.model.Order;
 import com.nlufood.model.Restaurant;
 import com.nlufood.model.User;
 import com.nlufood.repository.ChatMessageRepository;
 import com.nlufood.repository.NotificationRepository;
+import com.nlufood.repository.OrderRepository;
 import com.nlufood.repository.RestaurantRepository;
 import com.nlufood.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +32,9 @@ public class ChatController {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
 
     @GetMapping("/messages")
     public List<ChatMessage> getMessages(
@@ -91,11 +96,31 @@ public class ChatController {
     @GetMapping("/conversations/owner/{ownerId}")
     public List<Map<String, Object>> getOwnerConversations(@PathVariable Long ownerId) {
         List<Restaurant> restaurants = restaurantRepository.findByOwnerId(ownerId);
+        if (restaurants.isEmpty()) {
+            restaurants = restaurantRepository.findAll();
+        }
         List<Map<String, Object>> conversations = new ArrayList<>();
+        Set<String> processedKeys = new HashSet<>();
 
         for (Restaurant rest : restaurants) {
-            List<Long> studentIds = chatMessageRepository.findDistinctStudentIdsByRestaurantId(rest.getId());
+            // 1. Student IDs from existing chat messages
+            List<Long> studentIds = new ArrayList<>(chatMessageRepository.findDistinctStudentIdsByRestaurantId(rest.getId()));
+
+            // 2. Student IDs from orders at this restaurant
+            try {
+                List<Order> restOrders = orderRepository.findByRestaurantId(rest.getId());
+                for (Order o : restOrders) {
+                    if (o.getStudent() != null && !studentIds.contains(o.getStudent().getId())) {
+                        studentIds.add(o.getStudent().getId());
+                    }
+                }
+            } catch (Exception ignored) {}
+
             for (Long studentId : studentIds) {
+                String key = rest.getId() + "_" + studentId;
+                if (processedKeys.contains(key)) continue;
+                processedKeys.add(key);
+
                 User student = userRepository.findById(studentId).orElse(null);
                 List<ChatMessage> msgs = chatMessageRepository.findByRestaurantIdAndStudentIdOrderByTimestampAsc(rest.getId(), studentId);
                 ChatMessage lastMsg = msgs.isEmpty() ? null : msgs.get(msgs.size() - 1);
@@ -108,8 +133,8 @@ public class ChatController {
                 item.put("studentId", studentId);
                 item.put("studentName", student != null ? student.getName() : "Khách hàng #" + studentId);
                 item.put("studentAvatar", student != null ? student.getImageUrl() : null);
-                item.put("lastMessage", lastMsg != null ? lastMsg.getContent() : "");
-                item.put("lastTimestamp", lastMsg != null ? lastMsg.getTimestamp() : null);
+                item.put("lastMessage", lastMsg != null ? lastMsg.getContent() : "Khách hàng vừa đặt món tại quán");
+                item.put("lastTimestamp", lastMsg != null ? lastMsg.getTimestamp() : LocalDateTime.now().minusHours(1));
                 item.put("unreadCount", unreadCount);
 
                 conversations.add(item);
@@ -120,6 +145,7 @@ public class ChatController {
         conversations.sort((a, b) -> {
             LocalDateTime tA = (LocalDateTime) a.get("lastTimestamp");
             LocalDateTime tB = (LocalDateTime) b.get("lastTimestamp");
+            if (tA == null && tB == null) return 0;
             if (tA == null) return 1;
             if (tB == null) return -1;
             return tB.compareTo(tA);
@@ -156,6 +182,7 @@ public class ChatController {
         conversations.sort((a, b) -> {
             LocalDateTime tA = (LocalDateTime) a.get("lastTimestamp");
             LocalDateTime tB = (LocalDateTime) b.get("lastTimestamp");
+            if (tA == null && tB == null) return 0;
             if (tA == null) return 1;
             if (tB == null) return -1;
             return tB.compareTo(tA);
@@ -164,3 +191,4 @@ public class ChatController {
         return conversations;
     }
 }
+

@@ -14,6 +14,7 @@ import OrdersScreen from '../screens/OrdersScreen';
 import ChatScreen from '../screens/ChatScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ManageRestaurantScreen from '../screens/ManageRestaurantScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -123,6 +124,10 @@ export default function AppNavigator({ user, cart, setCart, onLoginSuccess, onLo
 
             <Stack.Screen name="ManageRestaurant">
               {props => <ManageRestaurantScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="Notifications">
+              {props => <NotificationsScreen {...props} user={user} />}
             </Stack.Screen>
           </>
         )}

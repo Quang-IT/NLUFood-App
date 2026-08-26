@@ -595,6 +595,9 @@ export default function ProfileScreen({ user, onLogout, onUpdateUser, navigation
           <Text style={styles.headerBrand}>NLUFood</Text>
         </View>
         <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation?.navigate('Notifications')}>
+            <Text style={{ fontSize: 20 }}>🔔</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation?.navigate('Chat')}>
             <Text style={{ fontSize: 20 }}>💬</Text>
           </TouchableOpacity>
@@ -660,6 +663,17 @@ export default function ProfileScreen({ user, onLogout, onUpdateUser, navigation
             <View style={{ flex: 1 }}>
               <Text style={styles.menuItemTitle}>Gói Hội Viên NLU VIP</Text>
               <Text style={styles.menuItemSub}>Miễn phí ship 100%, Voucher độc quyền</Text>
+            </View>
+            <Text style={{ fontSize: 16, color: '#A89A90' }}>➔</Text>
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity style={styles.menuItemRow} onPress={() => navigation?.navigate('Notifications')}>
+            <Text style={{ fontSize: 22, marginRight: 12 }}>🔔</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuItemTitle}>Thông báo của tôi</Text>
+              <Text style={styles.menuItemSub}>Cập nhật trạng thái đơn hàng & khuyến mãi</Text>
             </View>
             <Text style={{ fontSize: 16, color: '#A89A90' }}>➔</Text>
           </TouchableOpacity>

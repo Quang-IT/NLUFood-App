@@ -26,6 +26,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     @Autowired private FavoriteRepository favoriteRepository;
     @Autowired private AddressRepository addressRepository;
     @Autowired private SystemSettingRepository systemSettingRepository;
+    @Autowired private ChatMessageRepository chatMessageRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -41,6 +42,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         seedAddresses();
         seedFavorites();
         seedSystemSettings();
+        seedChatMessages();
     }
 
     private void seedUsers() {
@@ -132,6 +134,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                 if (i % 4 == 1) img = "https://images.unsplash.com/photo-1569718212165-3a8278d5f624";
                 if (i % 4 == 2) img = "https://images.unsplash.com/photo-1551024709-8f23befc6f87";
                 if (i % 4 == 3) img = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd";
+                User o = (i % 2 == 0) ? owner1 : owner2;
+                restaurantRepository.save(new Restaurant(null, names[i], "Khu phố 6, Linh Trung, TP. Thủ Đức", 4.8, img, statuses[i], o));
             }
         }
 
@@ -305,6 +309,45 @@ public class DatabaseSeeder implements CommandLineRunner {
             systemSettingRepository.save(new SystemSetting(null, "VIP_MEMBERSHIP_DISCOUNT_PERCENT", "20", "Mức giảm giá mặc định cho hội viên NLU VIP Gold (%)"));
             systemSettingRepository.save(new SystemSetting(null, "FREE_SHIPPING_MIN_ORDER", "30000", "Giá trị đơn hàng tối thiểu để freeship (VNĐ)"));
             System.out.println(">> Seeded 4 default SystemSettings entries successfully.");
+        }
+    }
+
+    private void seedChatMessages() {
+        if (chatMessageRepository.count() < 5) {
+            User student1 = userRepository.findByEmail("student@hcmuaf.edu.vn").orElse(null);
+            User student2 = userRepository.findByEmail("student2@nlu.edu.vn").orElse(null);
+            User owner1 = userRepository.findByEmail("owner@hcmuaf.edu.vn").orElse(null);
+            User owner2 = userRepository.findByEmail("trasua@nlu.edu.vn").orElse(null);
+
+            List<Restaurant> rests = restaurantRepository.findAll();
+            if (student1 != null && !rests.isEmpty()) {
+                Restaurant r1 = rests.get(0);
+                Restaurant r3 = rests.size() > 2 ? rests.get(2) : r1;
+
+                List<ChatMessage> msgs = new ArrayList<>();
+                // Convo 1: Student 1 with Restaurant 1
+                msgs.add(new ChatMessage(r1.getId(), student1.getId(), student1.getId(), student1.getName(), "STUDENT", "Quán ơi, cơm tấm thêm nhiều nước mắm và mỡ hành giúp mình nhé!"));
+                msgs.add(new ChatMessage(r1.getId(), student1.getId(), owner1 != null ? owner1.getId() : 2L, r1.getName(), "OWNER", "Quán nhận đơn rồi bạn nhé, lát nữa shipper giao đến KTX A nha!"));
+                msgs.add(new ChatMessage(r1.getId(), student1.getId(), student1.getId(), student1.getName(), "STUDENT", "Dạ em cảm ơn quán nhiều ạ! ❤️"));
+
+                // Convo 2: Student 2 with Restaurant 1
+                if (student2 != null) {
+                    msgs.add(new ChatMessage(r1.getId(), student2.getId(), student2.getId(), student2.getName(), "STUDENT", "Quán còn canh khổ qua dồn thịt không ạ?"));
+                    msgs.add(new ChatMessage(r1.getId(), student2.getId(), owner1 != null ? owner1.getId() : 2L, r1.getName(), "OWNER", "Dạ quán còn bạn nhé, bạn đặt luôn nha!"));
+                }
+
+                // Convo 3: Student 1 with Restaurant 3 (Trà sữa)
+                msgs.add(new ChatMessage(r3.getId(), student1.getId(), student1.getId(), student1.getName(), "STUDENT", "Trà sữa giảm ngọt 50% đường và ít đá được không quán?"));
+                msgs.add(new ChatMessage(r3.getId(), student1.getId(), owner2 != null ? owner2.getId() : 3L, r3.getName(), "OWNER", "Dạ được bạn nha, quán đang làm cho bạn rồi ạ!"));
+
+                for (int i = 0; i < msgs.size(); i++) {
+                    ChatMessage m = msgs.get(i);
+                    m.setTimestamp(LocalDateTime.now().minusMinutes((msgs.size() - i) * 5L));
+                    m.setRead(false);
+                }
+                chatMessageRepository.saveAll(msgs);
+                System.out.println(">> Seeded sample Chat Messages successfully.");
+            }
         }
     }
 }

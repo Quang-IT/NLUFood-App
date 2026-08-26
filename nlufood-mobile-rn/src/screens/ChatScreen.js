@@ -15,11 +15,18 @@ import {
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 
-const QUICK_CHIPS = [
+const STUDENT_QUICK_CHIPS = [
   'Quán còn bán món này không ạ? 🍲',
   'Khoảng bao lâu thì giao tới KTX ạ? ⏱️',
   'Cho mình xin thêm tương ớt/nước mắm nhé! 🌶️',
   'Cảm ơn quán nhiều ạ! ❤️'
+];
+
+const OWNER_QUICK_CHIPS = [
+  'Quán đã nhận đơn và đang làm món ạ! 👨‍🍳',
+  'Món đang được Shipper giao tới bạn rồi nhé! 🛵',
+  'Quán cảm ơn bạn nhiều! Chúc bạn ngon miệng! ❤️',
+  'Bạn cần ghi chú thêm gì về món ăn không ạ? 🍲'
 ];
 
 const AI_QUICK_PROMPTS = [
@@ -31,6 +38,7 @@ const AI_QUICK_PROMPTS = [
 
 export default function ChatScreen({ route, navigation, user }) {
   const initialRestaurant = route.params?.initialRestaurant || null;
+  const initialStudent = route.params?.initialStudent || null;
 
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -49,15 +57,23 @@ export default function ChatScreen({ route, navigation, user }) {
 
   useEffect(() => {
     if (initialRestaurant) {
+      const sId = isOwner
+        ? (initialStudent?.id || route.params?.studentId || 1)
+        : (user?.id || 1);
+      const sName = isOwner
+        ? (initialStudent?.name || route.params?.studentName || 'Khách hàng')
+        : (user?.name || 'Bạn');
+
       setSelectedConversation({
         restaurantId: initialRestaurant.id,
         restaurantName: initialRestaurant.name,
         restaurantImage: initialRestaurant.imageUrl,
-        studentId: user?.id
+        studentId: sId,
+        studentName: sName
       });
       setIsAiMode(false);
     }
-  }, [initialRestaurant]);
+  }, [initialRestaurant, initialStudent, user]);
 
   const fetchInitialData = async () => {
     if (!user) return;
@@ -115,6 +131,11 @@ export default function ChatScreen({ route, navigation, user }) {
         params: { restaurantId: rId, studentId: sId }
       });
       setMessages(response.data || []);
+
+      // Mark unread messages as read
+      axios.put(`${API_BASE_URL}/chat/read`, null, {
+        params: { restaurantId: rId, studentId: sId, readerRole: isOwner ? 'OWNER' : 'STUDENT' }
+      }).catch(() => {});
     } catch (e) {
       console.error(e);
     }
@@ -132,7 +153,8 @@ export default function ChatScreen({ route, navigation, user }) {
       restaurantId: restaurant.id,
       restaurantName: restaurant.name,
       restaurantImage: restaurant.imageUrl,
-      studentId: user?.id
+      studentId: user?.id,
+      studentName: user?.name
     });
   };
 
@@ -179,16 +201,19 @@ export default function ChatScreen({ route, navigation, user }) {
       return;
     }
 
-    // RESTAURANT DIRECT CHAT LOGIC
+    // DIRECT CHAT LOGIC (Between Owner & Student)
     const rId = selectedConversation?.restaurantId;
     const sId = isOwner ? selectedConversation?.studentId : user?.id;
-    if (!rId || !sId) return;
+    if (!rId || !sId) {
+      Alert.alert('Lỗi', 'Không thể xác định đối tượng trò chuyện.');
+      return;
+    }
 
     const payload = {
       restaurantId: rId,
       studentId: sId,
-      senderId: user.id,
-      senderName: user.name,
+      senderId: user?.id,
+      senderName: isOwner ? (selectedConversation?.restaurantName || user?.name || 'Quán ăn') : (user?.name || 'Sinh viên'),
       senderRole: isOwner ? 'OWNER' : 'STUDENT',
       content: content.trim()
     };
@@ -205,6 +230,19 @@ export default function ChatScreen({ route, navigation, user }) {
     }
   };
 
+  const getChatTitle = () => {
+    if (!selectedConversation) return 'Tin nhắn & Trò chuyện';
+    if (selectedConversation.isAi) return 'Trợ lý AI NLU FoodBot 🤖';
+    if (isOwner) {
+      return `💬 ${selectedConversation.studentName || 'Khách hàng'}`;
+    }
+    return `🏪 ${selectedConversation.restaurantName || 'Quán ăn'}`;
+  };
+
+  const currentChips = isAiMode
+    ? AI_QUICK_PROMPTS
+    : (isOwner ? OWNER_QUICK_CHIPS : STUDENT_QUICK_CHIPS);
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -218,21 +256,21 @@ export default function ChatScreen({ route, navigation, user }) {
           </TouchableOpacity>
         )}
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>
-            {selectedConversation
-              ? (selectedConversation.isAi
-                  ? 'Trợ lý AI NLU FoodBot 🤖'
-                  : (isOwner ? selectedConversation.studentName : selectedConversation.restaurantName))
-              : 'Tin nhắn & Trò chuyện'}
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {getChatTitle()}
           </Text>
-          <Text style={styles.onlineStatus}>🟢 Trực tuyến 24/7</Text>
+          <Text style={styles.onlineStatus}>
+            {isOwner && selectedConversation && !selectedConversation.isAi
+              ? `Quán: ${selectedConversation.restaurantName || 'NLU Food'}`
+              : '🟢 Trực tuyến 24/7'}
+          </Text>
         </View>
       </View>
 
       {!selectedConversation ? (
         /* CONVERSATION & RESTAURANT DIRECTORY LIST */
         <ScrollView contentContainerStyle={styles.directoryScroll} showsVerticalScrollIndicator={false}>
-          {/* AI ASSISTANT BANNER CARD */}
+          {/* AI ASSISTANT BANNER CARD (For Students) */}
           {!isOwner && (
             <TouchableOpacity style={styles.aiBotCard} onPress={handleOpenAiChat} activeOpacity={0.85}>
               <View style={styles.aiIconCircle}>
@@ -257,7 +295,7 @@ export default function ChatScreen({ route, navigation, user }) {
           {conversations.length > 0 && (
             <View style={{ marginBottom: 20 }}>
               <Text style={styles.listSectionTitle}>
-                {isOwner ? 'Khách hàng vừa nhắn tin' : 'Hội thoại gần đây'}
+                {isOwner ? 'Khách hàng vừa nhắn tin & đặt đơn' : 'Hội thoại gần đây'}
               </Text>
               {conversations.map((c, idx) => (
                 <TouchableOpacity
@@ -269,7 +307,7 @@ export default function ChatScreen({ route, navigation, user }) {
                     <Text style={{ fontSize: 22 }}>{isOwner ? '👤' : '🏪'}</Text>
                   </View>
                   <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.convName}>{isOwner ? c.studentName : c.restaurantName}</Text>
+                    <Text style={styles.convName}>{isOwner ? (c.studentName || 'Khách hàng') : c.restaurantName}</Text>
                     <Text style={styles.convLastMsg} numberOfLines={1}>
                       {c.lastMessage || 'Bấm để tiếp tục trò chuyện...'}
                     </Text>
@@ -334,19 +372,35 @@ export default function ChatScreen({ route, navigation, user }) {
               <View style={styles.welcomeChatBox}>
                 <Text style={{ fontSize: 40, marginBottom: 8 }}>👋</Text>
                 <Text style={styles.welcomeChatTitle}>
-                  Bắt đầu trò chuyện với {selectedConversation.restaurantName || 'Quán ăn'}
+                  {isOwner
+                    ? `Bắt đầu trò chuyện với ${selectedConversation.studentName || 'Khách hàng'}`
+                    : `Bắt đầu trò chuyện với ${selectedConversation.restaurantName || 'Quán ăn'}`}
                 </Text>
                 <Text style={styles.welcomeChatSub}>
-                  Bạn có thể gửi câu hỏi về món ăn, yêu cầu thêm gia vị hoặc ghi chú giao hàng.
+                  {isOwner
+                    ? 'Bạn có thể nhắn tin xác nhận đơn hàng, tư vấn món ăn hoặc trao đổi ghi chú giao hàng.'
+                    : 'Bạn có thể gửi câu hỏi về món ăn, yêu cầu thêm gia vị hoặc ghi chú giao hàng.'}
                 </Text>
               </View>
             ) : (
               messages.map((msg, idx) => {
-                const isMe = msg.senderRole === 'STUDENT' && !msg.id?.toString().startsWith('ai_');
+                // Determine whether current message belongs to the logged-in user
+                const isMe = (msg.senderId && user?.id)
+                  ? (msg.senderId === user.id)
+                  : (isOwner ? (msg.senderRole === 'OWNER') : (msg.senderRole === 'STUDENT'));
                 const isAi = msg.senderRole === 'AI';
+
+                const senderDisplayName = isMe
+                  ? 'Bạn'
+                  : (isAi
+                      ? '🤖 Trợ lý AI NLU'
+                      : (isOwner ? (selectedConversation?.studentName || msg.senderName || 'Khách hàng') : (selectedConversation?.restaurantName || msg.senderName || 'Quán ăn')));
+
                 return (
-                  <View key={idx} style={[styles.msgRow, isMe ? styles.msgRight : styles.msgLeft]}>
-                    <Text style={styles.senderName}>{isAi ? '🤖 Trợ lý AI NLU' : (msg.senderName || (isMe ? 'Bạn' : 'Quán ăn'))}</Text>
+                  <View key={msg.id || idx} style={[styles.msgRow, isMe ? styles.msgRight : styles.msgLeft]}>
+                    <Text style={[styles.senderName, isMe && styles.senderNameMe]}>
+                      {senderDisplayName}
+                    </Text>
                     <View style={[styles.bubble, isMe ? styles.bubbleMe : isAi ? styles.bubbleAi : styles.bubbleOther]}>
                       <Text style={[styles.msgText, isMe && styles.msgTextMe, isAi && styles.msgTextAi]}>{msg.content}</Text>
                     </View>
@@ -359,7 +413,7 @@ export default function ChatScreen({ route, navigation, user }) {
           {/* Quick Suggestion Chips */}
           <View style={styles.chipBarWrapper}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12 }}>
-              {(isAiMode ? AI_QUICK_PROMPTS : QUICK_CHIPS).map((chip, idx) => (
+              {currentChips.map((chip, idx) => (
                 <TouchableOpacity key={idx} style={styles.chipBtn} onPress={() => handleSendMessage(chip)}>
                   <Text style={styles.chipBtnText}>{chip}</Text>
                 </TouchableOpacity>
@@ -371,7 +425,7 @@ export default function ChatScreen({ route, navigation, user }) {
           <View style={styles.inputBar}>
             <TextInput
               style={styles.input}
-              placeholder={isAiMode ? "Hỏi Trợ lý AI NLU FoodBot..." : "Nhập tin nhắn cho quán..."}
+              placeholder={isAiMode ? "Hỏi Trợ lý AI NLU FoodBot..." : (isOwner ? "Nhập tin nhắn cho khách hàng..." : "Nhập tin nhắn cho quán...")}
               placeholderTextColor="#A89A90"
               value={inputText}
               onChangeText={setInputText}
@@ -470,6 +524,7 @@ const styles = StyleSheet.create({
   msgLeft: { alignSelf: 'flex-start' },
   msgRight: { alignSelf: 'flex-end' },
   senderName: { fontSize: 11, fontWeight: '700', color: '#A89A90', marginBottom: 4, marginLeft: 4 },
+  senderNameMe: { textAlign: 'right', marginRight: 4, marginLeft: 0 },
   bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
   bubbleMe: { backgroundColor: '#BA3D0E', borderBottomRightRadius: 4 },
   bubbleOther: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F0ECE8', borderBottomLeftRadius: 4 },

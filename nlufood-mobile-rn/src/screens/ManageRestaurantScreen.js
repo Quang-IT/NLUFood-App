@@ -498,7 +498,10 @@ export default function ManageRestaurantScreen({ navigation, user }) {
 
                           <TouchableOpacity
                             style={styles.chatCustomerBtn}
-                            onPress={() => navigation.navigate('Chat', { initialRestaurant: selectedRestaurant })}
+                            onPress={() => navigation.navigate('Chat', {
+                              initialRestaurant: selectedRestaurant,
+                              initialStudent: order.student || order.user || { id: order.studentId || 1, name: studentName }
+                            })}
                           >
                             <Text style={styles.chatCustomerBtnText}>💬</Text>
                           </TouchableOpacity>
